@@ -23,11 +23,28 @@ Architecture decisions are recorded as ADRs in [`docs/adr/`](docs/adr/). Start w
 
 Application code lives in [`steam-backlog/`](steam-backlog/) (Laravel + Inertia + React).
 
+## Local Development
+
 ```bash
 cd steam-backlog
 composer install && npm install
+cp .env.example .env
+php artisan key:generate
+# Add STEAM_API_KEY to .env (get one at steamcommunity.com/dev/apikey)
+touch database/database.sqlite
 php artisan migrate
 composer dev
 ```
 
 See [`steam-backlog/README.md`](steam-backlog/README.md) for full local setup.
+
+## Security & Secrets
+
+**Secrets management:** [`docs/secrets-management.md`](docs/secrets-management.md) (Linear [MXB-30](https://linear.app/steam-backlog/issue/MXB-30))
+
+**Security checklist:** [`docs/security-checklist.md`](docs/security-checklist.md)
+
+Key principles:
+- Never commit secrets to version control
+- Use `.env` locally, environment variables in production
+- All secrets documented in `docs/secrets-management.md`
