@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\UserGame;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  * IMPORTANT: Factories for enums will need adjustment once actual enum classes exist.
  * For now, using string representations following the data model.
  *
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\UserGame>
+ * @extends Factory<UserGame>
  */
 class UserGameFactory extends Factory
 {

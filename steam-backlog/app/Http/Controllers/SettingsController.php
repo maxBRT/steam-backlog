@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,10 +59,10 @@ class SettingsController extends Controller
     /**
      * Export the user's data as JSON.
      */
-    public function exportData(Request $request)
+    public function exportData(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $data = [
             'user' => [
                 'steam_id' => $user->steam_id,
@@ -76,11 +76,11 @@ class SettingsController extends Controller
             ],
         ];
 
-        $filename = 'steam-backlog-data-' . $user->steam_id . '-' . now()->format('Y-m-d-His') . '.json';
+        $filename = 'steam-backlog-data-'.$user->steam_id.'-'.now()->format('Y-m-d-His').'.json';
 
         return response()->json($data)
             ->header('Content-Type', 'application/json')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
     /**
@@ -93,9 +93,9 @@ class SettingsController extends Controller
         ]);
 
         $user = $request->user();
-        
+
         Auth::logout();
-        
+
         $user->delete();
 
         $request->session()->invalidate();

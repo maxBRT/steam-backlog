@@ -12,7 +12,7 @@ class TestHelpers
      */
     public static function fakeSteamId(): string
     {
-        return '7656119' . rand(7000000000, 7999999999);
+        return '7656119'.rand(7000000000, 7999999999);
     }
 
     /**

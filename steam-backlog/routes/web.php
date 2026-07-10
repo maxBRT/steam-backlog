@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\SteamAuthController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SteamAuthController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -15,8 +15,10 @@ Route::get('/test-login', function () {
     $user = User::first();
     if ($user) {
         Auth::login($user);
+
         return redirect('/settings');
     }
+
     return 'No user found. Run: php artisan db:seed';
 });
 

@@ -24,7 +24,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'steam_id' => '7656119' . $this->faker->unique()->numberBetween(7000000000, 7999999999),
+            'steam_id' => '7656119'.$this->faker->unique()->numberBetween(7000000000, 7999999999),
             'display_name' => $this->faker->userName(),
             'avatar_url' => 'https://avatars.steamstatic.com/test_full.jpg',
             'last_synced_at' => null,
@@ -74,4 +74,3 @@ class UserFactory extends Factory
         ]);
     }
 }
-

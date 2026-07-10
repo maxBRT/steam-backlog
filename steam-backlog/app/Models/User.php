@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -16,12 +18,8 @@ use Illuminate\Support\Carbon;
  * @property string $avatar_url
  * @property Carbon|null $last_synced_at
  * @property string $sync_status
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- */
-#[Fillable(['steam_id', 'display_name', 'avatar_url', 'last_synced_at', 'sync_status'])]
  * @property string $sync_frequency
- * @property array|null $privacy_preferences
+ * @property array<string, bool>|null $privacy_preferences
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -41,10 +39,19 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'last_synced_at' => 'datetime',
             'steam_id' => 'integer',
             'last_synced_at' => 'datetime',
             'privacy_preferences' => 'array',
         ];
+    }
+
+    /**
+     * Get the user's library entries.
+     *
+     * @return HasMany<UserGame, $this>
+     */
+    public function userGames(): HasMany
+    {
+        return $this->hasMany(UserGame::class);
     }
 }
