@@ -122,7 +122,8 @@ Laravel Cloud uses environment variables, not `.env` files.
 - [ ] `SESSION_SECURE_COOKIE=true`
 - [ ] Database credentials are configured
 - [ ] `APP_URL` matches production domain
-- [ ] `STEAM_RETURN_URL` and `STEAM_REALM` use production URLs
+- [ ] `STEAM_RETURN_URL` uses your production callback URL
+- [ ] `STEAM_REALM` is unset or set to your production host only (not a full URL)
 
 ## Security Best Practices
 

@@ -38,10 +38,14 @@ return [
     'steam' => [
         'client_id' => env('STEAM_API_KEY'),
         'client_secret' => env('STEAM_API_KEY'),
-        'redirect' => env('APP_URL').'/auth/steam/callback',
+        'redirect' => env('STEAM_RETURN_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/steam/callback'),
         'api_key' => env('STEAM_API_KEY'),
         'return_url' => env('STEAM_RETURN_URL'),
         'realm' => env('STEAM_REALM'),
+        'allowed_hosts' => array_values(array_filter(array_map(
+            trim(...),
+            explode(',', (string) env('STEAM_ALLOWED_HOSTS', '')),
+        ))),
     ],
 
 ];
