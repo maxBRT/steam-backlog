@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\RedirectResponse as IlluminateRedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 class SteamAuthController extends Controller
 {
@@ -14,7 +15,7 @@ class SteamAuthController extends Controller
         return Socialite::driver('steam')->redirect();
     }
 
-    public function callback(): RedirectResponse
+    public function callback(): IlluminateRedirectResponse
     {
         $steamUser = Socialite::driver('steam')->user();
 
@@ -31,10 +32,10 @@ class SteamAuthController extends Controller
         return redirect()->route('home');
     }
 
-    public function logout(): RedirectResponse
+    public function logout(): IlluminateRedirectResponse
     {
         Auth::logout();
-        
+
         request()->session()->invalidate();
         request()->session()->regenerateToken();
 

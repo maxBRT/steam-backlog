@@ -27,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
-        
+
         Event::listen(function (SocialiteWasCalled $event) {
             $event->extendSocialite('steam', SteamProvider::class);
         });
