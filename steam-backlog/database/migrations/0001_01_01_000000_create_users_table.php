@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('avatar_url');
             $table->timestamp('last_synced_at')->nullable();
             $table->enum('sync_status', ['idle', 'syncing', 'failed'])->default('idle');
+            $table->enum('sync_frequency', ['manual', 'daily', 'weekly'])->default('daily');
+            $table->json('privacy_preferences')->nullable();
+            $table->rememberToken();
             $table->timestamps();
         });
 
