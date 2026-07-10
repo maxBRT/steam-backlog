@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -25,9 +26,15 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['user_id', 'game_id']);
-            $table->unique(['user_id', 'board_column', 'board_position'], 'user_board_position_unique')
-                ->whereNotNull('board_column');
         });
+
+        // Create partial unique index for board positions (WHERE board_column IS NOT NULL)
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'sqlite') {
+            DB::statement('CREATE UNIQUE INDEX user_board_position_unique ON user_games (user_id, board_column, board_position) WHERE board_column IS NOT NULL');
+        } elseif ($driver === 'pgsql') {
+            DB::statement('CREATE UNIQUE INDEX user_board_position_unique ON user_games (user_id, board_column, board_position) WHERE board_column IS NOT NULL');
+        }
     }
 
     /**

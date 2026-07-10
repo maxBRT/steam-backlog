@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -35,8 +34,6 @@ use Illuminate\Support\Carbon;
 ])]
 class UserGame extends Model
 {
-    use HasFactory;
-
     /**
      * Get the attributes that should be cast.
      *
@@ -54,6 +51,8 @@ class UserGame extends Model
 
     /**
      * Get the user that owns this library entry.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -62,6 +61,8 @@ class UserGame extends Model
 
     /**
      * Get the game for this library entry.
+     *
+     * @return BelongsTo<Game, $this>
      */
     public function game(): BelongsTo
     {

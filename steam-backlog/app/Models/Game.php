@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -19,8 +18,6 @@ use Illuminate\Support\Carbon;
 #[Fillable(['app_id', 'name', 'header_image_url'])]
 class Game extends Model
 {
-    use HasFactory;
-
     /**
      * Get the attributes that should be cast.
      *
@@ -35,6 +32,8 @@ class Game extends Model
 
     /**
      * Get the user library entries for this game.
+     *
+     * @return HasMany<UserGame, $this>
      */
     public function userGames(): HasMany
     {

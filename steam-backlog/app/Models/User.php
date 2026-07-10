@@ -41,6 +41,8 @@ class User extends Authenticatable
 
     /**
      * Get the user's library entries.
+     *
+     * @return HasMany<UserGame, $this>
      */
     public function userGames(): HasMany
     {
