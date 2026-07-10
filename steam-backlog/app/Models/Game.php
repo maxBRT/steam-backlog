@@ -2,29 +2,24 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $steam_id
- * @property string $display_name
- * @property string $avatar_url
- * @property Carbon|null $last_synced_at
- * @property string $sync_status
+ * @property int $app_id
+ * @property string $name
+ * @property string $header_image_url
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['steam_id', 'display_name', 'avatar_url', 'last_synced_at', 'sync_status'])]
-class User extends Authenticatable
+#[Fillable(['app_id', 'name', 'header_image_url'])]
+class Game extends Model
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     /**
      * Get the attributes that should be cast.
@@ -34,13 +29,12 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'steam_id' => 'integer',
-            'last_synced_at' => 'datetime',
+            'app_id' => 'integer',
         ];
     }
 
     /**
-     * Get the user's library entries.
+     * Get the user library entries for this game.
      */
     public function userGames(): HasMany
     {
