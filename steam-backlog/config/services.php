@@ -36,6 +36,9 @@ return [
     ],
 
     'steam' => [
+        'client_id' => env('STEAM_API_KEY'),
+        'client_secret' => env('STEAM_API_KEY'),
+        'redirect' => env('APP_URL').'/auth/steam/callback',
         'api_key' => env('STEAM_API_KEY'),
         'return_url' => env('STEAM_RETURN_URL'),
         'realm' => env('STEAM_REALM'),
