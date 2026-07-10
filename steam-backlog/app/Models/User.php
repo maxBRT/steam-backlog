@@ -20,6 +20,14 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['steam_id', 'display_name', 'avatar_url', 'last_synced_at', 'sync_status'])]
+ * @property string $sync_frequency
+ * @property array|null $privacy_preferences
+ * @property string|null $remember_token
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
+#[Fillable(['steam_id', 'display_name', 'avatar_url', 'last_synced_at', 'sync_status', 'sync_frequency', 'privacy_preferences'])]
+#[Hidden(['remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -34,6 +42,9 @@ class User extends Authenticatable
     {
         return [
             'last_synced_at' => 'datetime',
+            'steam_id' => 'integer',
+            'last_synced_at' => 'datetime',
+            'privacy_preferences' => 'array',
         ];
     }
 }
