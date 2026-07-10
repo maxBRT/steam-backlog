@@ -38,7 +38,7 @@ APP_URL=http://localhost    # Your app URL
 
 STEAM_API_KEY=              # From Steam Web API
 STEAM_RETURN_URL="${APP_URL}/auth/steam/callback"
-STEAM_REALM="${APP_URL}"
+# STEAM_REALM is optional (host only). Leave unset to derive from STEAM_RETURN_URL.
 ```
 
 ### Database (Local)

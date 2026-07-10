@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::get('/auth/steam', [SteamAuthController::class, 'redirect'])->name('auth.steam');
-Route::get('/auth/steam/callback', [SteamAuthController::class, 'callback'])->name('auth.steam.callback');
+Route::middleware('steam.openid')->group(function () {
+    Route::get('/auth/steam', [SteamAuthController::class, 'redirect'])->name('auth.steam');
+    Route::get('/auth/steam/callback', [SteamAuthController::class, 'callback'])->name('auth.steam.callback');
+});
 Route::post('/auth/logout', [SteamAuthController::class, 'logout'])->name('auth.logout');
 Route::get('/test-login', function () {
     $user = User::first();
