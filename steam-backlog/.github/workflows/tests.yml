@@ -53,6 +53,10 @@ jobs:
 
       - name: Generate Application Key
         run: php artisan key:generate
+        # Note: STEAM_API_KEY not needed for tests that don't call Steam API
+        # Add as GitHub secret if integration tests require it:
+        # - name: Set Steam API Key
+        #   run: echo "STEAM_API_KEY=${{ secrets.STEAM_API_KEY }}" >> .env
 
       - name: Build Assets
         run: npm run build
