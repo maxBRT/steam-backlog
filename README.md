@@ -1,6 +1,8 @@
 # steam-backlog
 
-Triage your Steam library, manage your real backlog.
+Play what you love. Slowly make sense of the rest.
+
+Product positioning: [`docs/positioning.md`](docs/positioning.md) (Linear [MXB-23](https://linear.app/steam-backlog/issue/MXB-23/target-user-and-positioning-doc)).
 
 ## Stack
 
