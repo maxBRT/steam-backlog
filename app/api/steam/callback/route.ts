@@ -6,10 +6,11 @@ import {
   steamCallbackUrl,
   verifySteamOpenId,
 } from "@/lib/steam/openid";
-import { fetchPlayerSummary } from "@/lib/steam/player-summary";
 import {
-  SteamLinkError,
-} from "@/lib/steam/link-errors";
+  fetchPlayerSummary,
+  PrivateProfileError,
+} from "@/lib/steam/player-summary";
+import { SteamLinkError } from "@/lib/steam/link-errors";
 import { siteUrl } from "@/lib/site-url";
 
 function settingsRedirect(error?: SteamLinkError) {
@@ -41,7 +42,10 @@ export async function GET(request: NextRequest) {
   let summary;
   try {
     summary = await fetchPlayerSummary(steamId);
-  } catch {
+  } catch (error) {
+    if (error instanceof PrivateProfileError) {
+      return settingsRedirect(SteamLinkError.PrivateProfile);
+    }
     return settingsRedirect(SteamLinkError.SteamProfile);
   }
 

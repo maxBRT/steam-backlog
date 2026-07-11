@@ -2,6 +2,7 @@ export enum SteamLinkError {
   SteamTaken = "steam_taken",
   OpenIdInvalid = "openid_invalid",
   SteamProfile = "steam_profile",
+  PrivateProfile = "private_profile",
   UpdateFailed = "update_failed",
 }
 
