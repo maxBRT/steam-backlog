@@ -115,25 +115,3 @@ export async function fetchOwnedGames(
       };
     });
 }
-
-export async function canAccessGames(
-  steamId: bigint,
-  fetchImpl: typeof fetch = fetch,
-): Promise<boolean> {
-  try {
-    await fetchOwnedGames(
-      steamId,
-      { includeAppInfo: false, skipUnvettedApps: true },
-      fetchImpl,
-    );
-    return true;
-  } catch (error) {
-    if (
-      error instanceof PrivateGamesError ||
-      error instanceof GameDetailsHiddenError
-    ) {
-      return false;
-    }
-    throw error;
-  }
-}
