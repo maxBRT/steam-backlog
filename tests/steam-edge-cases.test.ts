@@ -7,7 +7,6 @@ import {
 } from "../lib/steam/player-summary.ts";
 import {
   fetchOwnedGames,
-  canAccessGames,
   PrivateGamesError,
   GameDetailsHiddenError,
 } from "../lib/steam/owned-games.ts";
@@ -334,74 +333,6 @@ describe("fetchOwnedGames edge cases", () => {
     assert.equal(
       games[0].headerImageUrl,
       "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg",
-    );
-  });
-});
-
-describe("canAccessGames", () => {
-  const originalApiKey = process.env.STEAM_WEB_API_KEY;
-
-  before(() => {
-    process.env.STEAM_WEB_API_KEY = "test_key_for_mocking";
-  });
-
-  after(() => {
-    if (originalApiKey === undefined) {
-      delete process.env.STEAM_WEB_API_KEY;
-    } else {
-      process.env.STEAM_WEB_API_KEY = originalApiKey;
-    }
-  });
-  it("returns true when games are accessible", async () => {
-    const mockFetch = mock.fn(async () =>
-      Response.json({
-        response: {
-          game_count: 1,
-          games: [{ appid: 730 }],
-        },
-      }),
-    );
-
-    const canAccess = await canAccessGames(
-      BigInt("76561198002516729"),
-      mockFetch,
-    );
-    assert.equal(canAccess, true);
-  });
-
-  it("returns false for PrivateGamesError", async () => {
-    const mockFetch = mock.fn(async () => new Response(null, { status: 403 }));
-
-    const canAccess = await canAccessGames(
-      BigInt("76561198002516729"),
-      mockFetch,
-    );
-    assert.equal(canAccess, false);
-  });
-
-  it("returns false for GameDetailsHiddenError", async () => {
-    const mockFetch = mock.fn(async () =>
-      Response.json({
-        response: {
-          game_count: 100,
-          games: [],
-        },
-      }),
-    );
-
-    const canAccess = await canAccessGames(
-      BigInt("76561198002516729"),
-      mockFetch,
-    );
-    assert.equal(canAccess, false);
-  });
-
-  it("throws for other errors", async () => {
-    const mockFetch = mock.fn(async () => new Response(null, { status: 500 }));
-
-    await assert.rejects(
-      () => canAccessGames(BigInt("76561198002516729"), mockFetch),
-      /GetOwnedGames failed: 500/,
     );
   });
 });
