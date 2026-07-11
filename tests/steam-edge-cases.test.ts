@@ -4,7 +4,6 @@ import {
   fetchPlayerSummary,
   PrivateProfileError,
   CommunityVisibilityState,
-  ProfileState,
 } from "../lib/steam/player-summary.ts";
 import {
   fetchOwnedGames,
