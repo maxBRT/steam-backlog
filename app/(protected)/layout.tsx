@@ -15,12 +15,21 @@ export default async function ProtectedLayout({
     redirect("/auth/login");
   }
 
+  const userId = data.claims.sub;
+  const { data: profile } = userId
+    ? await supabase
+        .from("steam_profiles")
+        .select("avatar_url")
+        .eq("id", userId)
+        .maybeSingle()
+    : { data: null };
+
   return (
     <>
       <header className="relative flex items-center justify-center py-4">
         <NavBar />
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          <UserMenu />
+          <UserMenu avatarUrl={profile?.avatar_url ?? ""} />
         </div>
       </header>
       {children}
