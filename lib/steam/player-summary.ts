@@ -1,13 +1,32 @@
 export type PlayerSummary = {
   displayName: string;
   avatarUrl: string;
+  communityVisibilityState: CommunityVisibilityState;
 };
+
+/** Steam communityvisibilitystate values from GetPlayerSummaries. */
+export const CommunityVisibilityState = {
+  Private: 1,
+  FriendsOnly: 2,
+  Public: 3,
+} as const;
+
+export type CommunityVisibilityState =
+  (typeof CommunityVisibilityState)[keyof typeof CommunityVisibilityState];
+
+export class PrivateProfileError extends Error {
+  constructor(message = "Steam profile is private or friends-only") {
+    super(message);
+    this.name = "PrivateProfileError";
+  }
+}
 
 type SteamPlayerSummariesResponse = {
   response?: {
     players?: Array<{
       personaname?: string;
       avatarfull?: string;
+      communityvisibilitystate?: number;
     }>;
   };
 };
@@ -32,8 +51,15 @@ export async function fetchPlayerSummary(
   const player = data.response?.players?.[0];
   if (!player) throw new Error("Steam profile not found");
 
+  const visibility =
+    player.communityvisibilitystate ?? CommunityVisibilityState.Private;
+  if (visibility !== CommunityVisibilityState.Public) {
+    throw new PrivateProfileError();
+  }
+
   return {
     displayName: player.personaname ?? "",
     avatarUrl: player.avatarfull ?? "",
+    communityVisibilityState: CommunityVisibilityState.Public,
   };
 }
