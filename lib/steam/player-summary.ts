@@ -1,39 +1,13 @@
 export type PlayerSummary = {
   displayName: string;
   avatarUrl: string;
-  communityVisibilityState: CommunityVisibilityState;
-  profileState: ProfileState;
 };
-
-export const CommunityVisibilityState = {
-  Private: 1,
-  Public: 3,
-} as const;
-
-export type CommunityVisibilityState =
-  (typeof CommunityVisibilityState)[keyof typeof CommunityVisibilityState];
-
-export const ProfileState = {
-  NotConfigured: 0,
-  Configured: 1,
-} as const;
-
-export type ProfileState = (typeof ProfileState)[keyof typeof ProfileState];
-
-export class PrivateProfileError extends Error {
-  constructor(message = "Steam profile is private or friends-only") {
-    super(message);
-    this.name = "PrivateProfileError";
-  }
-}
 
 type SteamPlayerSummariesResponse = {
   response?: {
     players?: Array<{
       personaname?: string;
       avatarfull?: string;
-      communityvisibilitystate?: number;
-      profilestate?: number;
     }>;
   };
 };
@@ -58,20 +32,8 @@ export async function fetchPlayerSummary(
   const player = data.response?.players?.[0];
   if (!player) throw new Error("Steam profile not found");
 
-  const communityVisibilityState: CommunityVisibilityState =
-    (player.communityvisibilitystate as CommunityVisibilityState) ??
-    CommunityVisibilityState.Private;
-  const profileState: ProfileState =
-    (player.profilestate as ProfileState) ?? ProfileState.NotConfigured;
-
-  if (communityVisibilityState === CommunityVisibilityState.Private) {
-    throw new PrivateProfileError();
-  }
-
   return {
     displayName: player.personaname ?? "",
     avatarUrl: player.avatarfull ?? "",
-    communityVisibilityState,
-    profileState,
   };
 }

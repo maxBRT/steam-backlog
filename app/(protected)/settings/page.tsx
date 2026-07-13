@@ -8,12 +8,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { isSteamLinkError, SteamLinkError } from "@/lib/steam/link-errors";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  steam_taken: "That Steam account is already linked to another Steamlog account.",
-  openid_invalid: "Steam login could not be verified. Try again.",
-  steam_profile: "Could not load Steam profile. Try again.",
-  update_failed: "Could not save Steam link. Try again.",
+const ERROR_MESSAGES: Record<SteamLinkError, string> = {
+  [SteamLinkError.SteamTaken]:
+    "That Steam account is already linked to another Steamlog account.",
+  [SteamLinkError.OpenIdInvalid]:
+    "Steam login could not be verified. Try again.",
+  [SteamLinkError.SteamProfile]: "Could not load Steam profile. Try again.",
+  [SteamLinkError.UpdateFailed]: "Could not save Steam link. Try again.",
 };
 
 export default async function SettingsPage({
@@ -35,7 +38,11 @@ export default async function SettingsPage({
     : { data: null };
 
   const linked = Boolean(profile?.steam_id);
-  const errorMessage = error ? ERROR_MESSAGES[error] ?? "Something went wrong." : null;
+  const errorMessage = error
+    ? isSteamLinkError(error)
+      ? ERROR_MESSAGES[error]
+      : "Something went wrong."
+    : null;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-10">
