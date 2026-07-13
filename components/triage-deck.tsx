@@ -28,7 +28,7 @@ import {
 } from "@/lib/triage";
 
 const HINTS_KEY = "steamlog:triage-hints-seen";
-const EXIT_DELAY_MS = 220;
+const EXIT_DELAY_MS = 420;
 
 const ACTIONS: Array<{
   status: TriageDecision;
@@ -206,7 +206,6 @@ export function TriageDeck({
     () => false,
   );
   const current = queue[0];
-  const next = queue[1];
 
   const decide = useCallback(
     async (status: TriageDecision) => {
@@ -369,7 +368,7 @@ export function TriageDeck({
 
       <div
         className="mx-auto flex w-full max-w-4xl flex-col"
-        inert={showHints ? true : undefined}
+        inert={showHints && current ? true : undefined}
       >
         <header className="mb-4 flex min-h-9 items-center justify-between gap-4 px-1">
           <p
@@ -404,16 +403,9 @@ export function TriageDeck({
         ) : (
           <section className="flex flex-1 flex-col justify-center">
             <div className="relative mx-auto w-full max-w-3xl">
-              {next ? (
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-x-5 top-3 h-full rounded-[2rem] border border-white/50 bg-white/45 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/40"
-                />
-              ) : null}
-
               <article
                 className={cn(
-                  "relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 shadow-2xl shadow-zinc-950/15 backdrop-blur-xl transition-[transform,opacity] duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none dark:border-white/10 dark:bg-zinc-950/90",
+                  "relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 shadow-2xl shadow-zinc-950/15 backdrop-blur-xl transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transform-none motion-reduce:transition-none dark:border-white/10 dark:bg-zinc-950/90",
                   exitClass,
                 )}
               >
