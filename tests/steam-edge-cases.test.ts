@@ -225,7 +225,7 @@ describe("fetchOwnedGames edge cases", () => {
   });
 
   it("includes unvetted apps when skip_unvetted_apps is false", async () => {
-    const mockFetch = mock.fn(async (url: string | URL) => {
+    const mockFetch = mock.fn(async (url: RequestInfo | URL) => {
       const parsedUrl = new URL(url.toString());
       const skipUnvetted = parsedUrl.searchParams.get("skip_unvetted_apps");
       assert.equal(skipUnvetted, "0");
