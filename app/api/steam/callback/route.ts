@@ -7,6 +7,7 @@ import {
   verifySteamOpenId,
 } from "@/lib/steam/openid";
 import { fetchPlayerSummary } from "@/lib/steam/player-summary";
+import { syncLibrary } from "@/lib/steam/library-sync";
 import {
   SteamLinkError,
 } from "@/lib/steam/link-errors";
@@ -61,6 +62,9 @@ export async function GET(request: NextRequest) {
     }
     return settingsRedirect(SteamLinkError.UpdateFailed);
   }
+
+  // Failures leave sync_status=failed; Settings shows it.
+  await syncLibrary(supabase, userId);
 
   return settingsRedirect();
 }

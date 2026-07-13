@@ -23,7 +23,7 @@ erDiagram
 
     steam_profiles {
         uuid id PK "FK auth.users"
-        bigint steam_id UK "nullable until Steam linked"
+        string steam_id UK "nullable until Steam linked"
         string display_name
         string avatar_url
         timestamp last_synced_at "nullable"
@@ -66,7 +66,7 @@ Domain Steam profile. Primary key is the same uuid as `auth.users.id` (cascade d
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | FK → `auth.users(id)`, cascade delete |
-| `steam_id` | bigint unique nullable | Steam 64-bit ID; set when Steam linked |
+| `steam_id` | text unique nullable | Steam 64-bit ID as text (avoids JS number precision loss); set when Steam linked |
 | `display_name` | string | From Steam profile (or auth metadata) |
 | `avatar_url` | string | From Steam profile (or auth metadata) |
 | `last_synced_at` | timestamp nullable | Last successful library sync |
