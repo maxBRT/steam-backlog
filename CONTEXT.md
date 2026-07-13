@@ -21,7 +21,7 @@ Where a library entry sits in the review workflow: unreviewed, hidden, maybe, or
 _Avoid_: status, disposition
 
 **Board column**:
-Where a backlog library entry sits on the kanban: queue, up_next, playing, or done. Null when not on the board. Independent from triage status; only meaningful when triage status is backlog.
+Where a backlog library entry sits on the kanban: queue, up_next, playing, or done. Done includes games considered finished or good enough. Null when not on the board. Independent from triage status; only meaningful when triage status is backlog.
 _Avoid_: kanban status, pipeline stage
 
 **Board position**:
