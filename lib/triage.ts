@@ -3,13 +3,33 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const TRIAGE_STATUSES = [
   "unreviewed",
   "hidden",
-  "maybe",
-  "backlog",
+  "someday",
+  "kept",
 ] as const;
 
 export type TriageStatus = (typeof TRIAGE_STATUSES)[number];
 export type TriageAction = TriageStatus | "done";
 export type TriageDecision = Exclude<TriageAction, "unreviewed">;
+type BoardPlacementAction = Extract<TriageAction, "done" | "kept">;
+
+const BOARD_PLACEMENT = {
+  done: { triage_status: "kept", board_column: "done" },
+  kept: { triage_status: "kept", board_column: "queue" },
+} as const satisfies Record<
+  BoardPlacementAction,
+  { triage_status: "kept"; board_column: "done" | "queue" }
+>;
+
+const BOARD_COLUMN_BY_ACTION: Record<BoardPlacementAction, "done" | "queue"> = {
+  done: "done",
+  kept: "queue",
+};
+
+function isBoardPlacementAction(
+  action: TriageAction,
+): action is BoardPlacementAction {
+  return action === "done" || action === "kept";
+}
 
 export type TriageGame = {
   id: number;
@@ -22,7 +42,7 @@ export type TriageGame = {
 
 export type TriageSnapshot = {
   queue: TriageGame[];
-  maybeQueue: TriageGame[];
+  somedayQueue: TriageGame[];
   reviewed: number;
   total: number;
 };
@@ -106,41 +126,66 @@ export function buildTriageSnapshot(rows: TriageRow[]): TriageSnapshot {
     };
   }
 
-  const queue = rows
-    .filter((row) => row.triage_status === "unreviewed")
-    .map(toGame);
-  const maybeQueue = rows
-    .filter((row) => row.triage_status === "maybe")
-    .map(toGame);
+  function queueForStatus(status: TriageStatus): TriageGame[] {
+    return sortTriageQueue(
+      rows.filter((row) => row.triage_status === status).map(toGame),
+    );
+  }
+
+  const unreviewed = rows.filter((row) => row.triage_status === "unreviewed");
 
   return {
-    queue: sortTriageQueue(queue),
-    maybeQueue: sortTriageQueue(maybeQueue),
-    reviewed: rows.length - queue.length,
+    queue: queueForStatus("unreviewed"),
+    somedayQueue: queueForStatus("someday"),
+    reviewed: rows.length - unreviewed.length,
     total: rows.length,
   };
 }
 
 export function triageUpdate(action: TriageAction, boardPosition?: number) {
-  if (action === "done") {
+  if (isBoardPlacementAction(action)) {
     if (boardPosition === undefined) {
-      throw new Error("Done board position is required");
+      throw new Error(
+        action === "done"
+          ? "Done board position is required"
+          : "Kept board position is required",
+      );
     }
 
     return {
-      triage_status: "backlog" as const,
-      board_column: "done" as const,
+      ...BOARD_PLACEMENT[action],
       board_position: boardPosition,
     };
   }
-
-  if (action === "backlog") return { triage_status: action };
 
   return {
     triage_status: action,
     board_column: null,
     board_position: null,
   };
+}
+
+async function nextBoardPosition(
+  supabase: SupabaseClient,
+  steamProfileId: string,
+  boardColumn: "done" | "queue",
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("steam_profile_games")
+    .select("board_position")
+    .eq("steam_profile_id", steamProfileId)
+    .eq("board_column", boardColumn)
+    .order("board_position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Could not load ${boardColumn} board position: ${error.message}`,
+    );
+  }
+
+  return typeof data?.board_position === "number" ? data.board_position + 1 : 0;
 }
 
 export async function loadTriageSnapshot(
@@ -178,21 +223,12 @@ export async function updateTriageEntry(
   action: TriageAction,
 ): Promise<void> {
   let boardPosition: number | undefined;
-  if (action === "done") {
-    const { data, error } = await supabase
-      .from("steam_profile_games")
-      .select("board_position")
-      .eq("steam_profile_id", steamProfileId)
-      .eq("board_column", "done")
-      .order("board_position", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Could not load Done board position: ${error.message}`);
-    }
-    boardPosition =
-      typeof data?.board_position === "number" ? data.board_position + 1 : 0;
+  if (isBoardPlacementAction(action)) {
+    boardPosition = await nextBoardPosition(
+      supabase,
+      steamProfileId,
+      BOARD_COLUMN_BY_ACTION[action],
+    );
   }
 
   const { data, error } = await supabase

@@ -17,11 +17,11 @@ A steam profile's ownership of a game. Holds triage decisions, board placement, 
 _Avoid_: steam_profile_game (table name only), owned game, user_game, player_game
 
 **Triage status**:
-Where a library entry sits in the review workflow: unreviewed, hidden, maybe, or backlog.
+Where a library entry sits in the review workflow: unreviewed, hidden, someday, or kept.
 _Avoid_: status, disposition
 
 **Board column**:
-Where a backlog library entry sits on the kanban: queue, up_next, playing, or done. Done includes games considered finished or good enough. Null when not on the board. Independent from triage status; only meaningful when triage status is backlog.
+Where a kept library entry sits on the kanban: queue, up_next, playing, or done. Done includes games considered finished or good enough. Null when not on the board. Independent from triage status; only meaningful when triage status is kept.
 _Avoid_: kanban status, pipeline stage
 
 **Board position**:
@@ -41,5 +41,5 @@ Background job that refreshes a steam profile's owned games and playtime from St
 _Avoid_: import, library sync run
 
 **Invariant**:
-A rule about valid library entry state (e.g. board fields only when triage status is backlog). Enforced in the application layer for MVP, not Postgres check constraints.
+A rule about valid library entry state (e.g. board fields only when triage status is kept). Enforced in the application layer for MVP, not Postgres check constraints.
 _Avoid_: validation rule, constraint
