@@ -48,7 +48,7 @@ describe("triage queue", () => {
     );
   });
 
-  it("builds separate queues for unreviewed and Maybe games", () => {
+  it("builds separate queues for unreviewed and Someday games", () => {
     const rows: TriageRow[] = [
       {
         id: 1,
@@ -66,10 +66,10 @@ describe("triage queue", () => {
       },
       {
         id: 3,
-        triage_status: "maybe",
+        triage_status: "someday",
         playtime_forever: 60,
         last_played_at: "2025-01-01T00:00:00.000Z",
-        games: { app_id: 30, name: "Maybe", header_image_url: "maybe.jpg" },
+        games: { app_id: 30, name: "Someday", header_image_url: "someday.jpg" },
       },
     ];
 
@@ -87,12 +87,12 @@ describe("triage queue", () => {
         lastPlayedAt: null,
       },
     ]);
-    assert.deepEqual(snapshot.maybeQueue, [
+    assert.deepEqual(snapshot.somedayQueue, [
       {
         id: 3,
         appId: 30,
-        name: "Maybe",
-        headerImageUrl: "maybe.jpg",
+        name: "Someday",
+        headerImageUrl: "someday.jpg",
         playtimeForever: 60,
         lastPlayedAt: "2025-01-01T00:00:00.000Z",
       },
@@ -152,14 +152,67 @@ describe("triage queue", () => {
 });
 
 describe("triage updates", () => {
-  it("clears board placement when leaving backlog", () => {
+  function createBoardAppendMocks(lastPosition: number) {
+    const lookupFilters: Array<[string, unknown]> = [];
+    let payload: unknown;
+    const positionQuery = {
+      eq(column: string, value: unknown) {
+        lookupFilters.push([column, value]);
+        return positionQuery;
+      },
+      order() {
+        return positionQuery;
+      },
+      limit() {
+        return positionQuery;
+      },
+      async maybeSingle() {
+        return { data: { board_position: lastPosition }, error: null };
+      },
+    };
+    const updateQuery = {
+      eq() {
+        return updateQuery;
+      },
+      select() {
+        return {
+          async maybeSingle() {
+            return { data: { id: 9 }, error: null };
+          },
+        };
+      },
+    };
+    const supabase = {
+      from(table: string) {
+        assert.equal(table, "steam_profile_games");
+        return {
+          select(columns: string) {
+            assert.equal(columns, "board_position");
+            return positionQuery;
+          },
+          update(value: unknown) {
+            payload = value;
+            return updateQuery;
+          },
+        };
+      },
+    } as unknown as SupabaseClient;
+
+    return {
+      supabase,
+      lookupFilters,
+      getPayload: () => payload,
+    };
+  }
+
+  it("clears board placement when leaving the board", () => {
     assert.deepEqual(triageUpdate("hidden"), {
       triage_status: "hidden",
       board_column: null,
       board_position: null,
     });
-    assert.deepEqual(triageUpdate("maybe"), {
-      triage_status: "maybe",
+    assert.deepEqual(triageUpdate("someday"), {
+      triage_status: "someday",
       board_column: null,
       board_position: null,
     });
@@ -170,24 +223,26 @@ describe("triage updates", () => {
     });
   });
 
-  it("does not invent board placement for backlog", () => {
-    assert.deepEqual(triageUpdate("backlog"), {
-      triage_status: "backlog",
+  it("places kept games on the queue board column", () => {
+    assert.deepEqual(triageUpdate("kept", 2), {
+      triage_status: "kept",
+      board_column: "queue",
+      board_position: 2,
     });
   });
 
   it("places completed games in the Done board column", () => {
     assert.deepEqual(triageUpdate("done", 3), {
-      triage_status: "backlog",
+      triage_status: "kept",
       board_column: "done",
       board_position: 3,
     });
   });
 
   it("validates mutation input", () => {
-    assert.deepEqual(parseTriageMutation({ entryId: 42, status: "maybe" }), {
+    assert.deepEqual(parseTriageMutation({ entryId: 42, status: "someday" }), {
       entryId: 42,
-      status: "maybe",
+      status: "someday",
     });
     assert.deepEqual(parseTriageMutation({ entryId: 42, status: "done" }), {
       entryId: 42,
@@ -236,50 +291,7 @@ describe("triage updates", () => {
   });
 
   it("appends completed games to the Done board column", async () => {
-    const lookupFilters: Array<[string, unknown]> = [];
-    let payload: unknown;
-    const positionQuery = {
-      eq(column: string, value: unknown) {
-        lookupFilters.push([column, value]);
-        return positionQuery;
-      },
-      order() {
-        return positionQuery;
-      },
-      limit() {
-        return positionQuery;
-      },
-      async maybeSingle() {
-        return { data: { board_position: 2 }, error: null };
-      },
-    };
-    const updateQuery = {
-      eq() {
-        return updateQuery;
-      },
-      select() {
-        return {
-          async maybeSingle() {
-            return { data: { id: 9 }, error: null };
-          },
-        };
-      },
-    };
-    const supabase = {
-      from(table: string) {
-        assert.equal(table, "steam_profile_games");
-        return {
-          select(columns: string) {
-            assert.equal(columns, "board_position");
-            return positionQuery;
-          },
-          update(value: unknown) {
-            payload = value;
-            return updateQuery;
-          },
-        };
-      },
-    } as unknown as SupabaseClient;
+    const { supabase, lookupFilters, getPayload } = createBoardAppendMocks(2);
 
     await updateTriageEntry(supabase, "profile-1", 9, "done");
 
@@ -287,10 +299,26 @@ describe("triage updates", () => {
       ["steam_profile_id", "profile-1"],
       ["board_column", "done"],
     ]);
-    assert.deepEqual(payload, {
-      triage_status: "backlog",
+    assert.deepEqual(getPayload(), {
+      triage_status: "kept",
       board_column: "done",
       board_position: 3,
+    });
+  });
+
+  it("appends kept games to the queue board column", async () => {
+    const { supabase, lookupFilters, getPayload } = createBoardAppendMocks(4);
+
+    await updateTriageEntry(supabase, "profile-1", 9, "kept");
+
+    assert.deepEqual(lookupFilters, [
+      ["steam_profile_id", "profile-1"],
+      ["board_column", "queue"],
+    ]);
+    assert.deepEqual(getPayload(), {
+      triage_status: "kept",
+      board_column: "queue",
+      board_position: 5,
     });
   });
 
@@ -318,7 +346,7 @@ describe("triage updates", () => {
     } as unknown as SupabaseClient;
 
     await assert.rejects(
-      updateTriageEntry(supabase, "profile-1", 9, "backlog"),
+      updateTriageEntry(supabase, "profile-1", 9, "hidden"),
       /not found/,
     );
   });

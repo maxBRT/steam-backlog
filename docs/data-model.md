@@ -45,7 +45,7 @@ erDiagram
         bigint id PK
         uuid steam_profile_id FK
         bigint game_id FK
-        enum triage_status "unreviewed | hidden | maybe | backlog"
+        enum triage_status "unreviewed | hidden | someday | kept"
         enum board_column "queue | up_next | playing | done | null"
         int board_position "nullable"
         int playtime_forever "minutes"
@@ -96,7 +96,7 @@ A steam profile's library entry for one game. Triage and board are **two indepen
 | `id` | bigint PK | |
 | `steam_profile_id` | uuid FK → steam_profiles | |
 | `game_id` | bigint FK → games | |
-| `triage_status` | enum | `unreviewed`, `hidden`, `maybe`, `backlog` |
+| `triage_status` | enum | `unreviewed`, `hidden`, `someday`, `kept` |
 | `board_column` | enum nullable | `queue`, `up_next`, `playing`, `done` |
 | `board_position` | int nullable | Order within column (0, 1, 2…) |
 | `playtime_forever` | int | Minutes, from Steam |
@@ -122,7 +122,7 @@ New rows default to `triage_status = unreviewed` with null board fields.
 
 Enforced in the application layer for MVP, not Postgres check constraints.
 
-1. **Board only for backlog.** `board_column` and `board_position` are non-null only when `triage_status = backlog`.
+1. **Board only for kept.** `board_column` and `board_position` are non-null only when `triage_status = kept`.
 2. **Hide clears board.** Setting `triage_status = hidden` also sets `board_column` and `board_position` to null.
 3. **Idempotent sync.** Re-import updates playtime and game metadata; never resets `triage_status` or board fields (MXB-44).
 4. **Removed, not deleted.** When a game disappears from `GetOwnedGames`, set `removed_at`. Do not reset triage or board state.
@@ -152,5 +152,5 @@ These issues implement against this model:
 - **MXB-31** — migrations for `steam_profiles`, `games`, `steam_profile_games`
 - **MXB-6** — Supabase Auth; profile row in `public.steam_profiles`
 - **MXB-8** — `GetOwnedGames` upserts `games` + `steam_profile_games`
-- **MXB-11** — board queries `triage_status = backlog` with board columns
+- **MXB-11** — board queries `triage_status = kept` with board columns
 - **MXB-44** — sync preserves triage and board state

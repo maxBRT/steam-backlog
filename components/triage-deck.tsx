@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { playtimeLabel } from "@/lib/playtime";
 import { cn } from "@/lib/utils";
 import {
   sortTriageQueue,
@@ -29,6 +30,12 @@ import {
 
 const HINTS_KEY = "steamlog:triage-hints-seen";
 const EXIT_DELAY_MS = 420;
+const EXIT_CLASSES: Record<TriageDecision, string> = {
+  hidden: "-translate-x-[120%] -rotate-3 opacity-0",
+  someday: "translate-y-14 scale-95 opacity-0",
+  kept: "translate-x-[120%] rotate-3 opacity-0",
+  done: "translate-y-14 scale-95 opacity-0",
+};
 
 const ACTIONS: Array<{
   status: TriageDecision;
@@ -46,17 +53,17 @@ const ACTIONS: Array<{
       "border-zinc-300 bg-white/80 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-200 dark:hover:bg-zinc-800",
   },
   {
-    status: "maybe",
-    key: "M",
-    label: "Maybe",
+    status: "someday",
+    key: "S",
+    label: "Someday",
     Icon: Clock3,
     className:
       "border-amber-300 bg-amber-50/90 text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-100 dark:hover:bg-amber-900",
   },
   {
-    status: "backlog",
-    key: "B",
-    label: "Backlog",
+    status: "kept",
+    key: "K",
+    label: "Keep",
     Icon: BookmarkPlus,
     className:
       "border-emerald-300 bg-emerald-50/90 text-emerald-900 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-100 dark:hover:bg-emerald-900",
@@ -100,16 +107,6 @@ async function persist(entryId: number, status: TriageAction) {
   }
 }
 
-function playtimeLabel(minutes: number) {
-  if (minutes === 0) return "No playtime";
-  if (minutes < 60) return `${minutes} min played`;
-
-  const hours = minutes / 60;
-  return `${new Intl.NumberFormat("en", {
-    maximumFractionDigits: hours < 10 ? 1 : 0,
-  }).format(hours)} hr played`;
-}
-
 function lastPlayedLabel(value: string | null) {
   if (!value) return "Never played";
   return `Last played ${new Intl.DateTimeFormat("en", {
@@ -123,13 +120,13 @@ function lastPlayedLabel(value: string | null) {
 function EmptyState({
   linked,
   hasLibrary,
-  maybeCount,
-  onReviewMaybe,
+  somedayCount,
+  onReviewSomeday,
 }: {
   linked: boolean;
   hasLibrary: boolean;
-  maybeCount: number;
-  onReviewMaybe: () => void;
+  somedayCount: number;
+  onReviewSomeday: () => void;
 }) {
   const title = !linked
     ? "Bring your Steam library along"
@@ -155,7 +152,7 @@ function EmptyState({
       <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-600 dark:text-zinc-300">
         {copy}
       </p>
-      {linked && maybeCount > 0 ? (
+      {linked && somedayCount > 0 ? (
         <div className="mt-7 w-full rounded-2xl bg-amber-50 p-4 dark:bg-amber-950/50">
           <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
             Ready for another look?
@@ -164,10 +161,10 @@ function EmptyState({
             type="button"
             variant="outline"
             className="mt-3 h-10 w-full rounded-xl border-amber-300 bg-white/70 text-amber-950 dark:border-amber-800 dark:bg-black/20 dark:text-amber-100"
-            onClick={onReviewMaybe}
+            onClick={onReviewSomeday}
           >
             <Clock3 />
-            Review Maybe Games ({maybeCount})
+            Review Someday Games ({somedayCount})
           </Button>
         </div>
       ) : null}
@@ -189,14 +186,14 @@ export function TriageDeck({
   linked: boolean;
 }) {
   const [queue, setQueue] = useState(initialSnapshot.queue);
-  const [maybeGames, setMaybeGames] = useState(initialSnapshot.maybeQueue);
-  const [reviewingMaybe, setReviewingMaybe] = useState(false);
+  const [somedayGames, setSomedayGames] = useState(initialSnapshot.somedayQueue);
+  const [reviewingSomeday, setReviewingSomeday] = useState(false);
   const [reviewed, setReviewed] = useState(initialSnapshot.reviewed);
   const [pending, setPending] = useState(false);
   const [leaving, setLeaving] = useState<TriageDecision | null>(null);
   const [lastAction, setLastAction] = useState<{
     game: TriageGame;
-    previousStatus: "unreviewed" | "maybe";
+    previousStatus: "unreviewed" | "someday";
     decision: TriageDecision;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -211,7 +208,7 @@ export function TriageDeck({
     async (status: TriageDecision) => {
       if (!current || pending || showHints) return;
 
-      const previousStatus = reviewingMaybe ? "maybe" : "unreviewed";
+      const previousStatus = reviewingSomeday ? "someday" : "unreviewed";
       setPending(true);
       setError(null);
       setLeaving(status);
@@ -228,10 +225,10 @@ export function TriageDeck({
 
       const reason = await request;
       if (!reason) {
-        if (previousStatus === "unreviewed" && status === "maybe") {
-          setMaybeGames((games) => sortTriageQueue([...games, current]));
-        } else if (previousStatus === "maybe" && status !== "maybe") {
-          setMaybeGames((games) =>
+        if (previousStatus === "unreviewed" && status === "someday") {
+          setSomedayGames((games) => sortTriageQueue([...games, current]));
+        } else if (previousStatus === "someday" && status !== "someday") {
+          setSomedayGames((games) =>
             games.filter((game) => game.id !== current.id),
           );
         }
@@ -249,7 +246,7 @@ export function TriageDeck({
       }
       setPending(false);
     },
-    [current, pending, reviewingMaybe, showHints],
+    [current, pending, reviewingSomeday, showHints],
   );
 
   const undo = useCallback(async () => {
@@ -262,13 +259,13 @@ export function TriageDeck({
       setQueue((games) => [lastAction.game, ...games]);
       if (lastAction.previousStatus === "unreviewed") {
         setReviewed((count) => Math.max(0, count - 1));
-        if (lastAction.decision === "maybe") {
-          setMaybeGames((games) =>
+        if (lastAction.decision === "someday") {
+          setSomedayGames((games) =>
             games.filter((game) => game.id !== lastAction.game.id),
           );
         }
-      } else if (lastAction.decision !== "maybe") {
-        setMaybeGames((games) =>
+      } else if (lastAction.decision !== "someday") {
+        setSomedayGames((games) =>
           sortTriageQueue([lastAction.game, ...games]),
         );
       }
@@ -284,9 +281,9 @@ export function TriageDeck({
     }
   }, [lastAction, pending, showHints]);
 
-  function beginMaybeReview() {
-    setQueue(maybeGames);
-    setReviewingMaybe(true);
+  function beginSomedayReview() {
+    setQueue(somedayGames);
+    setReviewingSomeday(true);
     setLastAction(null);
     setError(null);
   }
@@ -337,16 +334,7 @@ export function TriageDeck({
     window.dispatchEvent(new Event("triage-hints"));
   }
 
-  const exitClass =
-    leaving === "hidden"
-      ? "-translate-x-[120%] -rotate-3 opacity-0"
-      : leaving === "maybe"
-        ? "translate-y-14 scale-95 opacity-0"
-        : leaving === "backlog"
-          ? "translate-x-[120%] rotate-3 opacity-0"
-          : leaving === "done"
-            ? "translate-y-14 scale-95 opacity-0"
-            : "";
+  const exitClass = leaving ? EXIT_CLASSES[leaving] : "";
 
   return (
     <main className="relative isolate flex min-h-[calc(100vh-72px)] flex-1 overflow-hidden px-4 pb-8 pt-3 sm:px-6 sm:pb-10">
@@ -375,8 +363,8 @@ export function TriageDeck({
             className="text-xs font-medium tracking-wide text-zinc-500 dark:text-zinc-400"
             aria-live="polite"
           >
-            {reviewingMaybe
-              ? "Reviewing Maybe games"
+            {reviewingSomeday
+              ? "Reviewing Someday games"
               : `${reviewed} / ${initialSnapshot.total} reviewed`}
           </p>
           <Button
@@ -396,8 +384,8 @@ export function TriageDeck({
             <EmptyState
               linked={linked}
               hasLibrary={initialSnapshot.total > 0}
-              maybeCount={maybeGames.length}
-              onReviewMaybe={beginMaybeReview}
+              somedayCount={somedayGames.length}
+              onReviewSomeday={beginSomedayReview}
             />
           </div>
         ) : (

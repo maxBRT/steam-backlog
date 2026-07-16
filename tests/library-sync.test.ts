@@ -251,7 +251,7 @@ describe("syncLibrary", () => {
           id: 1,
           steam_profile_id: "p1",
           game_id: 1,
-          triage_status: "backlog",
+          triage_status: "kept",
           board_column: "queue",
           board_position: 0,
           playtime_forever: 10,
@@ -277,7 +277,7 @@ describe("syncLibrary", () => {
 
     assert.equal(result.ok, true);
     const entry = db.entries[0];
-    assert.equal(entry.triage_status, "backlog");
+    assert.equal(entry.triage_status, "kept");
     assert.equal(entry.board_column, "queue");
     assert.equal(entry.board_position, 0);
     assert.equal(entry.playtime_forever, 999);
@@ -302,7 +302,7 @@ describe("syncLibrary", () => {
           id: 1,
           steam_profile_id: "p1",
           game_id: 1,
-          triage_status: "maybe",
+          triage_status: "someday",
           board_column: null,
           board_position: null,
           playtime_forever: 1,
