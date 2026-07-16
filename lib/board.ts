@@ -242,7 +242,7 @@ export function planBoardMove(
   return updates;
 }
 
-export function isBoardColumn(value: unknown): value is BoardColumn {
+function isBoardColumn(value: unknown): value is BoardColumn {
   return (
     typeof value === "string" &&
     BOARD_COLUMNS.includes(value as BoardColumn)
