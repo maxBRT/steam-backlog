@@ -56,8 +56,6 @@ export type BoardMoveMutation = {
   targetIndex: number;
 };
 
-const BOARD_POSITION_OFFSET = 1_000_000;
-
 function emptyColumns<T>(): Record<BoardColumn, T[]> {
   return Object.fromEntries(
     BOARD_COLUMNS.map((column) => [column, [] as T[]]),
@@ -275,108 +273,20 @@ export function parseBoardMoveMutation(
   return { entryId, targetColumn, targetIndex };
 }
 
-type BoardPlacementRow = {
-  id: number;
-  board_column: BoardColumn;
-  board_position: number;
-};
-
-function buildColumnEntryIds(
-  rows: BoardPlacementRow[],
-): Record<BoardColumn, number[]> {
-  const positionById = new Map(
-    rows.map((row) => [row.id, row.board_position]),
-  );
-  const columns = emptyColumns<number>();
-
-  for (const row of rows) {
-    columns[row.board_column].push(row.id);
-  }
-
-  for (const column of BOARD_COLUMNS) {
-    columns[column].sort(
-      (left, right) =>
-        (positionById.get(left) ?? 0) - (positionById.get(right) ?? 0),
-    );
-  }
-
-  return columns;
-}
-
-async function applyPlacementUpdates(
-  supabase: SupabaseClient,
-  steamProfileId: string,
-  updates: BoardPlacementUpdate[],
-): Promise<void> {
-  for (const update of updates) {
-    const { error } = await supabase
-      .from("steam_profile_games")
-      .update({
-        board_column: update.board_column,
-        board_position: update.board_position + BOARD_POSITION_OFFSET,
-      })
-      .eq("id", update.id)
-      .eq("steam_profile_id", steamProfileId);
-
-    if (error) {
-      throw new Error(`Could not stage board move: ${error.message}`);
-    }
-  }
-
-  for (const update of updates) {
-    const { error } = await supabase
-      .from("steam_profile_games")
-      .update({
-        board_column: update.board_column,
-        board_position: update.board_position,
-      })
-      .eq("id", update.id)
-      .eq("steam_profile_id", steamProfileId);
-
-    if (error) {
-      throw new Error(`Could not save board move: ${error.message}`);
-    }
-  }
-}
-
 export async function moveBoardEntry(
   supabase: SupabaseClient,
-  steamProfileId: string,
   entryId: number,
   targetColumn: BoardColumn,
   targetIndex: number,
 ): Promise<void> {
-  const { data: entry, error: entryError } = await supabase
-    .from("steam_profile_games")
-    .select("id")
-    .eq("id", entryId)
-    .eq("steam_profile_id", steamProfileId)
-    .eq("triage_status", "kept")
-    .not("board_column", "is", null)
-    .not("board_position", "is", null)
-    .maybeSingle();
-
-  if (entryError) {
-    throw new Error(`Could not load board entry: ${entryError.message}`);
-  }
-  if (!entry) {
-    throw new Error("Library entry not found");
-  }
-
-  const { data, error } = await supabase
-    .from("steam_profile_games")
-    .select("id, board_column, board_position")
-    .eq("steam_profile_id", steamProfileId)
-    .eq("triage_status", "kept")
-    .not("board_column", "is", null)
-    .not("board_position", "is", null);
+  // ponytail: one RPC transaction; refresh never sees staged positions.
+  const { error } = await supabase.rpc("move_board_entry", {
+    p_entry_id: entryId,
+    p_target_column: targetColumn,
+    p_target_index: targetIndex,
+  });
 
   if (error) {
-    throw new Error(`Could not load board placement: ${error.message}`);
+    throw new Error(`Could not save board move: ${error.message}`);
   }
-
-  const rows = (data ?? []) as BoardPlacementRow[];
-  const columns = buildColumnEntryIds(rows);
-  const updates = planBoardMove(columns, entryId, targetColumn, targetIndex);
-  await applyPlacementUpdates(supabase, steamProfileId, updates);
 }

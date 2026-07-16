@@ -33,13 +33,17 @@ export async function POST(request: Request) {
   try {
     await moveBoardEntry(
       supabase,
-      steamProfileId,
       mutation.entryId,
       mutation.targetColumn,
       mutation.targetIndex,
     );
     return Response.json({ ok: true });
-  } catch {
+  } catch (reason) {
+    const message =
+      reason instanceof Error
+        ? reason.message
+        : "That move could not be saved. Try again.";
+    console.error("[board/move]", message);
     return Response.json(
       { ok: false, error: "That move could not be saved. Try again." },
       { status: 500 },

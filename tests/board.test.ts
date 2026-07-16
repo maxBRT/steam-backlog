@@ -214,90 +214,22 @@ describe("board moves", () => {
     assert.equal(parseBoardMoveMutation({ entryId: -1, targetColumn: "queue", targetIndex: 0 }), null);
   });
 
-  it("persists a move with staged positions to avoid slot conflicts", async () => {
-    const updates: Array<{ id: number; payload: unknown }> = [];
-    let selectCalls = 0;
-    const entryQuery = {
-      eq() {
-        return entryQuery;
-      },
-      not() {
-        return entryQuery;
-      },
-      async maybeSingle() {
-        return { data: { id: 2 }, error: null };
-      },
-    };
-    const placementQuery = {
-      eq() {
-        return placementQuery;
-      },
-      not() {
-        return placementQuery;
-      },
-      async then(
-        resolve: (value: {
-          data: Array<{
-            id: number;
-            board_column: string;
-            board_position: number;
-          }>;
-          error: null;
-        }) => unknown,
-      ) {
-        return resolve({
-          data: [
-            { id: 1, board_column: "queue", board_position: 0 },
-            { id: 2, board_column: "queue", board_position: 1 },
-            { id: 3, board_column: "playing", board_position: 0 },
-          ],
-          error: null,
-        });
-      },
-    };
+  it("persists a move via move_board_entry RPC", async () => {
+    let rpcArgs: unknown;
     const supabase = {
-      from(table: string) {
-        assert.equal(table, "steam_profile_games");
-        return {
-          select() {
-            selectCalls += 1;
-            return selectCalls === 1 ? entryQuery : placementQuery;
-          },
-          update(payload: unknown) {
-            return {
-              eq(column: string, value: unknown) {
-                const entryId = column === "id" ? value : null;
-                return {
-                  eq() {
-                    if (typeof entryId === "number") {
-                      updates.push({ id: entryId, payload });
-                    }
-                    return Promise.resolve({ error: null });
-                  },
-                };
-              },
-            };
-          },
-        };
+      async rpc(fn: string, args: unknown) {
+        assert.equal(fn, "move_board_entry");
+        rpcArgs = args;
+        return { data: null, error: null };
       },
     } as unknown as SupabaseClient;
 
-    await moveBoardEntry(supabase, "profile-1", 2, "playing", 0);
+    await moveBoardEntry(supabase, 2, "playing", 0);
 
-    assert.equal(updates.length, 6);
-    assert.deepEqual(
-      updates.filter(({ id }) => id === 2).map(({ payload }) => payload),
-      [
-        { board_column: "playing", board_position: 1_000_000 },
-        { board_column: "playing", board_position: 0 },
-      ],
-    );
-    assert.deepEqual(
-      updates.filter(({ id }) => id === 1).map(({ payload }) => payload),
-      [
-        { board_column: "queue", board_position: 1_000_000 },
-        { board_column: "queue", board_position: 0 },
-      ],
-    );
+    assert.deepEqual(rpcArgs, {
+      p_entry_id: 2,
+      p_target_column: "playing",
+      p_target_index: 0,
+    });
   });
 });
