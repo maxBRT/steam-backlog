@@ -9,7 +9,7 @@ The Steam-linked identity for an authenticated account: steam id, display name, 
 _Avoid_: User, player, account, profile
 
 **Game**:
-A Steam app in the shared catalog, keyed by app id. Metadata (name, header image) is normalized here.
+A Steam app in the shared catalog, keyed by app id. Metadata (name, header image, icon image) is normalized here.
 _Avoid_: Title, app
 
 **Library entry**:

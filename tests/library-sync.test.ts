@@ -73,6 +73,7 @@ type Game = {
   app_id: number;
   name: string;
   header_image_url: string;
+  icon_image_url: string;
 };
 
 type LibraryEntry = {
@@ -136,6 +137,7 @@ function createMemorySupabase(seed: {
               if (existing) {
                 existing.name = row.name;
                 existing.header_image_url = row.header_image_url;
+                existing.icon_image_url = row.icon_image_url;
               } else {
                 existing = { id: nextGameId++, ...row };
                 games.push(existing);
@@ -245,7 +247,7 @@ describe("syncLibrary", () => {
         sync_status: "idle",
         last_synced_at: null,
       },
-      games: [{ id: 1, app_id: 570, name: "Dota 2", header_image_url: "" }],
+      games: [{ id: 1, app_id: 570, name: "Dota 2", header_image_url: "", icon_image_url: "" }],
       entries: [
         {
           id: 1,
@@ -294,8 +296,8 @@ describe("syncLibrary", () => {
         last_synced_at: null,
       },
       games: [
-        { id: 1, app_id: 570, name: "Dota 2", header_image_url: "" },
-        { id: 2, app_id: 440, name: "TF2", header_image_url: "" },
+        { id: 1, app_id: 570, name: "Dota 2", header_image_url: "", icon_image_url: "" },
+        { id: 2, app_id: 440, name: "TF2", header_image_url: "", icon_image_url: "" },
       ],
       entries: [
         {
@@ -383,5 +385,42 @@ describe("syncLibrary", () => {
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.error, "hidden");
     assert.equal(db.profiles.get("p1")?.sync_status, "failed");
+  });
+
+  it("persists icon_image_url from owned game iconImageUrl", async () => {
+    const db = createMemorySupabase({
+      profile: {
+        id: "p1",
+        steam_id: "76561198000000000",
+        sync_status: "idle",
+        last_synced_at: null,
+      },
+    });
+
+    const iconUrl =
+      "https://media.steampowered.com/steamcommunity/public/images/apps/440/07385eb55b5ba974aebbe74d3c99626bda7920b8.jpg";
+
+    const result = await syncLibrary(db.client, "p1", {
+      fetchOwnedGames: async () => [
+        {
+          appId: 440,
+          name: "Team Fortress 2",
+          playtimeForever: 10,
+          playtime2Weeks: 0,
+          lastPlayedAt: null,
+          headerImageUrl: "https://cdn.akamai.steamstatic.com/steam/apps/440/header.jpg",
+          iconImageUrl: iconUrl,
+        },
+      ],
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(db.games.length, 1);
+    assert.equal(db.games[0].app_id, 440);
+    assert.equal(db.games[0].icon_image_url, iconUrl);
+    assert.equal(
+      db.games[0].header_image_url,
+      "https://cdn.akamai.steamstatic.com/steam/apps/440/header.jpg",
+    );
   });
 });
