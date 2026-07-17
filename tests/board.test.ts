@@ -4,13 +4,64 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   applyBoardMove,
   buildBoardSnapshot,
+  DEFAULT_BOARD_RAIL_COLLAPSE,
+  isCollapsedBoardRail,
+  isCollapsibleBoardColumn,
   loadBoardSnapshot,
   moveBoardEntry,
   parseBoardMoveMutation,
   planBoardMove,
+  resolveBoardDropTargetIndex,
+  toggleBoardRailCollapse,
   type BoardCard,
   type BoardRow,
 } from "../lib/board.ts";
+
+describe("board focus rails", () => {
+  it("defaults Queue and Done to collapsed", () => {
+    assert.deepEqual(DEFAULT_BOARD_RAIL_COLLAPSE, { queue: true, done: true });
+  });
+
+  it("toggles a collapsible column in session state", () => {
+    const expandedQueue = toggleBoardRailCollapse(
+      DEFAULT_BOARD_RAIL_COLLAPSE,
+      "queue",
+    );
+    assert.deepEqual(expandedQueue, { queue: false, done: true });
+
+    const expandedBoth = toggleBoardRailCollapse(expandedQueue, "done");
+    assert.deepEqual(expandedBoth, { queue: false, done: false });
+  });
+
+  it("identifies collapsible board columns", () => {
+    assert.equal(isCollapsibleBoardColumn("queue"), true);
+    assert.equal(isCollapsibleBoardColumn("done"), true);
+    assert.equal(isCollapsibleBoardColumn("up_next"), false);
+    assert.equal(isCollapsibleBoardColumn("playing"), false);
+  });
+
+  it("detects collapsed Queue and Done rails", () => {
+    assert.equal(
+      isCollapsedBoardRail("queue", DEFAULT_BOARD_RAIL_COLLAPSE),
+      true,
+    );
+    assert.equal(
+      isCollapsedBoardRail("done", DEFAULT_BOARD_RAIL_COLLAPSE),
+      true,
+    );
+    assert.equal(
+      isCollapsedBoardRail("up_next", DEFAULT_BOARD_RAIL_COLLAPSE),
+      false,
+    );
+    assert.equal(
+      isCollapsedBoardRail(
+        "queue",
+        toggleBoardRailCollapse(DEFAULT_BOARD_RAIL_COLLAPSE, "queue"),
+      ),
+      false,
+    );
+  });
+});
 
 describe("board snapshot", () => {
   it("groups kept entries by column and orders by board position", () => {
@@ -20,21 +71,21 @@ describe("board snapshot", () => {
         board_column: "queue",
         board_position: 1,
         playtime_forever: 60,
-        games: { app_id: 10, name: "Second", header_image_url: "b.jpg" },
+        games: { app_id: 10, name: "Second", header_image_url: "b.jpg", icon_image_url: "" },
       },
       {
         id: 2,
         board_column: "queue",
         board_position: 0,
         playtime_forever: 0,
-        games: { app_id: 20, name: "First", header_image_url: "a.jpg" },
+        games: { app_id: 20, name: "First", header_image_url: "a.jpg", icon_image_url: "" },
       },
       {
         id: 3,
         board_column: "playing",
         board_position: 0,
         playtime_forever: 120,
-        games: { app_id: 30, name: "Active", header_image_url: "c.jpg" },
+        games: { app_id: 30, name: "Active", header_image_url: "c.jpg", icon_image_url: "" },
       },
     ];
 
@@ -81,6 +132,7 @@ describe("board snapshot", () => {
                 app_id: 440,
                 name: "Team Fortress 2",
                 header_image_url: "tf2.jpg",
+                icon_image_url: "tf2-icon.jpg",
               },
             },
           ],
@@ -123,6 +175,7 @@ describe("board snapshot", () => {
         appId: 440,
         name: "Team Fortress 2",
         headerImageUrl: "tf2.jpg",
+        iconImageUrl: "tf2-icon.jpg",
         playtimeForever: 30,
       },
     ]);
@@ -139,12 +192,32 @@ describe("board snapshot", () => {
   });
 });
 
+describe("resolveBoardDropTargetIndex", () => {
+  it("prepends drops onto collapsed Queue or Done", () => {
+    assert.equal(resolveBoardDropTargetIndex("queue", 3, true), 0);
+    assert.equal(resolveBoardDropTargetIndex("done", 2, true), 0);
+  });
+
+  it("keeps the caller index when Queue or Done is expanded", () => {
+    assert.equal(resolveBoardDropTargetIndex("queue", 3, false), 3);
+    assert.equal(resolveBoardDropTargetIndex("done", 1, false), 1);
+  });
+
+  it("keeps the caller index for Up Next and Playing regardless of collapse", () => {
+    assert.equal(resolveBoardDropTargetIndex("up_next", 2, true), 2);
+    assert.equal(resolveBoardDropTargetIndex("up_next", 2, false), 2);
+    assert.equal(resolveBoardDropTargetIndex("playing", 0, true), 0);
+    assert.equal(resolveBoardDropTargetIndex("playing", 4, false), 4);
+  });
+});
+
 describe("board moves", () => {
   const card = (id: number): BoardCard => ({
     id,
     appId: id + 100,
     name: `Game ${id}`,
     headerImageUrl: "",
+    iconImageUrl: "",
     playtimeForever: 0,
   });
 

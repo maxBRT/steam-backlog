@@ -16,11 +16,45 @@ export const BOARD_COLUMN_LABELS: Record<BoardColumn, string> = {
   done: "Done",
 };
 
+export const COLLAPSIBLE_BOARD_COLUMNS = ["queue", "done"] as const;
+
+export type CollapsibleBoardColumn = (typeof COLLAPSIBLE_BOARD_COLUMNS)[number];
+
+export type BoardRailCollapseState = Record<CollapsibleBoardColumn, boolean>;
+
+export const DEFAULT_BOARD_RAIL_COLLAPSE: BoardRailCollapseState = {
+  queue: true,
+  done: true,
+};
+
+export function isCollapsibleBoardColumn(
+  column: BoardColumn,
+): column is CollapsibleBoardColumn {
+  return COLLAPSIBLE_BOARD_COLUMNS.some(
+    (collapsibleColumn) => collapsibleColumn === column,
+  );
+}
+
+export function isCollapsedBoardRail(
+  column: BoardColumn,
+  railCollapse: BoardRailCollapseState,
+): boolean {
+  return isCollapsibleBoardColumn(column) && railCollapse[column];
+}
+
+export function toggleBoardRailCollapse(
+  state: BoardRailCollapseState,
+  column: CollapsibleBoardColumn,
+): BoardRailCollapseState {
+  return { ...state, [column]: !state[column] };
+}
+
 export type BoardCard = {
   id: number;
   appId: number;
   name: string;
   headerImageUrl: string;
+  iconImageUrl: string;
   playtimeForever: number;
 };
 
@@ -34,6 +68,7 @@ type GameRow = {
   app_id: number;
   name: string;
   header_image_url: string;
+  icon_image_url: string;
 };
 
 export type BoardRow = {
@@ -105,6 +140,7 @@ export function buildBoardSnapshot(
       appId: game.app_id,
       name: game.name,
       headerImageUrl: game.header_image_url,
+      iconImageUrl: game.icon_image_url,
       playtimeForever: row.playtime_forever,
     };
   }
@@ -152,7 +188,7 @@ export async function loadBoardSnapshot(
     const { data, error } = await supabase
       .from("steam_profile_games")
       .select(
-        "id, board_column, board_position, playtime_forever, games!inner(app_id, name, header_image_url)",
+        "id, board_column, board_position, playtime_forever, games!inner(app_id, name, header_image_url, icon_image_url)",
       )
       .eq("steam_profile_id", steamProfileId)
       .eq("triage_status", "kept")
@@ -240,6 +276,17 @@ export function planBoardMove(
   }
 
   return updates;
+}
+
+export function resolveBoardDropTargetIndex(
+  targetColumn: BoardColumn,
+  targetIndex: number,
+  isTargetColumnCollapsed: boolean,
+): number {
+  if (isTargetColumnCollapsed && isCollapsibleBoardColumn(targetColumn)) {
+    return 0;
+  }
+  return targetIndex;
 }
 
 function isBoardColumn(value: unknown): value is BoardColumn {

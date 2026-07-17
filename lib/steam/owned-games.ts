@@ -5,6 +5,7 @@ export type OwnedGame = {
   playtime2Weeks: number;
   lastPlayedAt: Date | null;
   headerImageUrl?: string;
+  iconImageUrl?: string;
 };
 
 export class PrivateGamesError extends Error {
@@ -101,8 +102,12 @@ export async function fetchOwnedGames(
           ? new Date(game.rtime_last_played * 1000)
           : null;
 
-      const headerImageUrl = game.img_icon_url
+      const iconHash = game.img_icon_url;
+      const headerImageUrl = iconHash
         ? `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+        : undefined;
+      const iconImageUrl = iconHash
+        ? `https://media.steampowered.com/steamcommunity/public/images/apps/${appId}/${iconHash}.jpg`
         : undefined;
 
       return {
@@ -112,6 +117,7 @@ export async function fetchOwnedGames(
         playtime2Weeks: game.playtime_2weeks ?? 0,
         lastPlayedAt,
         headerImageUrl,
+        iconImageUrl,
       };
     });
 }

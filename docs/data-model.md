@@ -37,6 +37,7 @@ erDiagram
         int app_id UK
         string name
         string header_image_url
+        string icon_image_url
         timestamp created_at
         timestamp updated_at
     }
@@ -83,6 +84,7 @@ Shared Steam catalog. One row per `app_id`. Updated on sync when metadata change
 | `app_id` | int unique | Steam application ID |
 | `name` | string | Display name |
 | `header_image_url` | string | Cover art URL |
+| `icon_image_url` | string | Square icon URL from Steam `img_icon_url` |
 | `created_at`, `updated_at` | timestamps | |
 
 Store delisted status is **not** tracked. If the steam profile still owns the game, store policy is irrelevant.

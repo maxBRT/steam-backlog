@@ -93,6 +93,7 @@ export async function syncLibrary(
       app_id: game.appId,
       name: game.name ?? `App ${game.appId}`,
       header_image_url: game.headerImageUrl ?? "",
+      icon_image_url: game.iconImageUrl ?? "",
     }));
 
     const appIdToGameId = new Map<number, number>();

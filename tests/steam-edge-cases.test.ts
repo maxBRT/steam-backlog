@@ -335,4 +335,33 @@ describe("fetchOwnedGames edge cases", () => {
       "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg",
     );
   });
+
+  it("constructs icon image URL from img_icon_url hash", async () => {
+    const mockFetch = mock.fn(async () =>
+      Response.json({
+        response: {
+          game_count: 1,
+          games: [
+            {
+              appid: 440,
+              name: "Team Fortress 2",
+              playtime_forever: 100,
+              img_icon_url: "07385eb55b5ba974aebbe74d3c99626bda7920b8",
+            },
+          ],
+        },
+      }),
+    );
+
+    const games = await fetchOwnedGames(
+      BigInt("76561198002516729"),
+      {},
+      mockFetch,
+    );
+    assert.equal(games.length, 1);
+    assert.equal(
+      games[0].iconImageUrl,
+      "https://media.steampowered.com/steamcommunity/public/images/apps/440/07385eb55b5ba974aebbe74d3c99626bda7920b8.jpg",
+    );
+  });
 });
