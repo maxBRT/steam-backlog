@@ -1,0 +1,6 @@
+# Runtime artifacts (git worktrees + agent logs)
+logs/
+worktrees/
+
+# Secrets (use .env.example as template)
+.env
