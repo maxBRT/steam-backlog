@@ -86,18 +86,17 @@ export function progressSummaryFromUnlocks(
   };
 }
 
-export type BoardProgressBar = {
+/** Known Progress as unlocked over total (Board bars and Game detail). */
+export type ProgressCounts = {
   unlocked: number;
   total: number;
 };
 
-/** Board bar fields only when Progress tracking is on and Progress is known. */
-export function boardProgressBar(input: {
-  progressTracking: boolean;
+/** Progress counts when unlocked/total are known (not gated on tracking). */
+export function knownProgress(input: {
   progressUnlocked: number | null;
   progressTotal: number | null;
-}): BoardProgressBar | null {
-  if (!input.progressTracking) return null;
+}): ProgressCounts | null {
   if (input.progressUnlocked === null || input.progressTotal === null) {
     return null;
   }
@@ -105,6 +104,32 @@ export function boardProgressBar(input: {
     unlocked: input.progressUnlocked,
     total: input.progressTotal,
   };
+}
+
+/** Board bar fields only when Progress tracking is on and Progress is known. */
+export function boardProgressBar(input: {
+  progressTracking: boolean;
+  progressUnlocked: number | null;
+  progressTotal: number | null;
+}): ProgressCounts | null {
+  if (!input.progressTracking) return null;
+  return knownProgress(input);
+}
+
+export class LibraryEntryNotFoundError extends Error {
+  constructor(message = "Library entry not found") {
+    super(message);
+    this.name = "LibraryEntryNotFoundError";
+  }
+}
+
+export class ProgressTrackingNotAllowedError extends Error {
+  constructor(
+    message = "Progress tracking is only available for kept library entries",
+  ) {
+    super(message);
+    this.name = "ProgressTrackingNotAllowedError";
+  }
 }
 
 export type GameDetailAchievementUnlock = {
@@ -130,11 +155,7 @@ export type GameDetailEntry = {
   name: string;
   headerImageUrl: string;
   iconImageUrl: string;
-  progressTracking: boolean;
-  progressUnlocked: number | null;
-  progressTotal: number | null;
-  progressFetchedAt: string | null;
-};
+} & ProgressCacheSnapshot;
 
 export type GameDetailSnapshot = {
   id: number;
@@ -143,7 +164,7 @@ export type GameDetailSnapshot = {
   headerImageUrl: string;
   iconImageUrl: string;
   progressTracking: boolean;
-  progress: BoardProgressBar | null;
+  progress: ProgressCounts | null;
   achievements: GameDetailAchievementUnlock[];
   achievementsStatus: GameDetailAchievementsStatus;
   achievementsError: string | null;
@@ -175,8 +196,8 @@ export function buildGameDetailSnapshot(input: {
     headerImageUrl: entry.headerImageUrl,
     iconImageUrl: entry.iconImageUrl,
     progressTracking: entry.progressTracking,
-    progress: boardProgressBar({
-      progressTracking: entry.progressTracking,
+    // Game detail shows Progress whenever known; Board gating stays in boardProgressBar.
+    progress: knownProgress({
       progressUnlocked: entry.progressUnlocked,
       progressTotal: entry.progressTotal,
     }),
@@ -446,7 +467,7 @@ export async function setProgressTracking(
     throw new Error(`Could not load library entry: ${error.message}`);
   }
   if (!data) {
-    throw new Error("Library entry not found");
+    throw new LibraryEntryNotFoundError();
   }
 
   const row = data as unknown as ProgressTrackingEntryRow;
@@ -456,7 +477,7 @@ export async function setProgressTracking(
       removedAt: row.removed_at,
     })
   ) {
-    throw new Error("Progress tracking is only available for kept library entries");
+    throw new ProgressTrackingNotAllowedError();
   }
 
   const needsFirstFetch =
@@ -499,7 +520,7 @@ export async function setProgressTracking(
     } catch (err) {
       if (err instanceof AchievementsUnavailableError) {
         const snapshot = await loadGameDetail(supabase, steamProfileId, entryId);
-        if (!snapshot) throw new Error("Library entry not found");
+        if (!snapshot) throw new LibraryEntryNotFoundError();
         return {
           snapshot: {
             ...snapshot,
@@ -513,6 +534,6 @@ export async function setProgressTracking(
   }
 
   const snapshot = await loadGameDetail(supabase, steamProfileId, entryId);
-  if (!snapshot) throw new Error("Library entry not found");
+  if (!snapshot) throw new LibraryEntryNotFoundError();
   return { snapshot };
 }

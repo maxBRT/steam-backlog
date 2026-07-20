@@ -1,5 +1,7 @@
 import {
+  LibraryEntryNotFoundError,
   parseProgressTrackingMutation,
+  ProgressTrackingNotAllowedError,
   setProgressTracking,
 } from "@/lib/progress";
 import { createClient } from "@/lib/supabase/server";
@@ -55,17 +57,17 @@ export async function POST(request: Request) {
     );
     return Response.json({ ok: true, snapshot: result.snapshot });
   } catch (reason) {
+    if (reason instanceof LibraryEntryNotFoundError) {
+      return Response.json({ ok: false, error: reason.message }, { status: 404 });
+    }
+    if (reason instanceof ProgressTrackingNotAllowedError) {
+      return Response.json({ ok: false, error: reason.message }, { status: 400 });
+    }
     const message =
       reason instanceof Error
         ? reason.message
         : "Could not update Progress tracking.";
     console.error("[progress/tracking]", message);
-    if (message === "Library entry not found") {
-      return Response.json({ ok: false, error: message }, { status: 404 });
-    }
-    if (message.includes("only available for kept")) {
-      return Response.json({ ok: false, error: message }, { status: 400 });
-    }
     return Response.json(
       { ok: false, error: "Could not update Progress tracking." },
       { status: 500 },

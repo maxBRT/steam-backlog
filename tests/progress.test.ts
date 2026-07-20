@@ -332,6 +332,41 @@ describe("Game detail snapshot", () => {
     assert.equal(snapshot.appId, 570);
   });
 
+  it("shows Progress when known even if Progress tracking is off", () => {
+    const snapshot = buildGameDetailSnapshot({
+      entry: {
+        ...baseEntry,
+        progressTracking: false,
+      },
+      achievements: [
+        {
+          apiName: "FIRST_BLOOD",
+          displayName: "First Blood",
+          description: "Get a kill",
+          iconUrl: "fb.png",
+          iconGrayUrl: "fb-gray.png",
+          hidden: false,
+          unlocked: true,
+          unlockedAt: "2026-07-01T12:00:00.000Z",
+        },
+        {
+          apiName: "WIN_MATCH",
+          displayName: "Victory",
+          description: "Win a match",
+          iconUrl: "win.png",
+          iconGrayUrl: "win-gray.png",
+          hidden: false,
+          unlocked: false,
+          unlockedAt: null,
+        },
+      ],
+    });
+
+    assert.equal(snapshot.progressTracking, false);
+    assert.deepEqual(snapshot.progress, { unlocked: 1, total: 2 });
+    assert.equal(snapshot.achievementsStatus, "ready");
+  });
+
   it("shows an explicit empty state when there are no Achievements", () => {
     const snapshot = buildGameDetailSnapshot({
       entry: {
@@ -382,7 +417,7 @@ describe("Game detail snapshot", () => {
 
   it("loads Game detail only for the current steam profile", async () => {
     const filters: Array<[string, unknown]> = [];
-    let unlockQueryFilters: Array<[string, unknown]> = [];
+    const unlockQueryFilters: Array<[string, unknown]> = [];
 
     const entryQuery = {
       select() {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowLeft, Gamepad2 } from "lucide-react";
 import { ProgressBar } from "@/components/progress-bar";
 import { Label } from "@/components/ui/label";
@@ -110,7 +110,8 @@ export function GameDetailView({
           <div className="min-w-0">
             <Label htmlFor="progress-tracking">Track Progress</Label>
             <p className="text-sm text-muted-foreground">
-              Include this game in Progress refresh during Library sync.
+              Include this library entry in Progress refresh during Library
+              sync.
             </p>
           </div>
         </div>
@@ -125,69 +126,85 @@ export function GameDetailView({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Achievements
         </h2>
-
-        {snapshot.achievementsStatus === "error" ? (
-          <p
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
-            role="alert"
-          >
-            {snapshot.achievementsError ??
-              "Steam could not load achievements for this game."}
-          </p>
-        ) : null}
-
-        {snapshot.achievementsStatus === "empty" ? (
-          <p className="rounded-xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-300">
-            This game has no Achievements on Steam.
-          </p>
-        ) : null}
-
-        {snapshot.achievementsStatus === "unknown" ? (
-          <p className="rounded-xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-300">
-            {snapshot.progressTracking
-              ? "Progress has not been fetched yet. Turn Progress tracking off and on, or run Library sync."
-              : "Turn on Progress tracking to load achievements."}
-          </p>
-        ) : null}
-
-        {snapshot.achievementsStatus === "ready" ? (
-          <ul className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200/80 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
-            {snapshot.achievements.map((achievement) => (
-              <li
-                key={achievement.apiName}
-                className="flex items-start gap-3 px-4 py-3"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    achievement.unlocked
-                      ? achievement.iconUrl || achievement.iconGrayUrl
-                      : achievement.iconGrayUrl || achievement.iconUrl
-                  }
-                  alt=""
-                  className={cn(
-                    "size-10 shrink-0 rounded-md bg-zinc-100 object-cover dark:bg-zinc-900",
-                    !achievement.unlocked && "opacity-50",
-                  )}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium leading-snug">
-                    {achievement.displayName || achievement.apiName}
-                  </p>
-                  {achievement.description ? (
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                      {achievement.description}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-[11px] uppercase tracking-wide text-zinc-400">
-                    {achievement.unlocked ? "Unlocked" : "Locked"}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <AchievementsPanel snapshot={snapshot} />
       </section>
     </main>
+  );
+}
+
+function AchievementsPanel({ snapshot }: { snapshot: GameDetailSnapshot }) {
+  switch (snapshot.achievementsStatus) {
+    case "error":
+      return (
+        <p
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+          role="alert"
+        >
+          {snapshot.achievementsError ??
+            "Steam could not load achievements for this game."}
+        </p>
+      );
+    case "empty":
+      return (
+        <p className="rounded-xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-300">
+          This game has no Achievements on Steam.
+        </p>
+      );
+    case "unknown":
+      return (
+        <p className="rounded-xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-300">
+          {snapshot.progressTracking
+            ? "Progress has not been fetched yet. Turn Progress tracking off and on, or run Library sync."
+            : "Turn on Progress tracking to load achievements."}
+        </p>
+      );
+    case "ready":
+      return (
+        <ul className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200/80 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
+          {snapshot.achievements.map((achievement) => (
+            <AchievementUnlockRow
+              key={achievement.apiName}
+              achievement={achievement}
+            />
+          ))}
+        </ul>
+      );
+  }
+}
+
+function AchievementUnlockRow({
+  achievement,
+}: {
+  achievement: GameDetailSnapshot["achievements"][number];
+}): ReactNode {
+  return (
+    <li className="flex items-start gap-3 px-4 py-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={
+          achievement.unlocked
+            ? achievement.iconUrl || achievement.iconGrayUrl
+            : achievement.iconGrayUrl || achievement.iconUrl
+        }
+        alt=""
+        className={cn(
+          "size-10 shrink-0 rounded-md bg-zinc-100 object-cover dark:bg-zinc-900",
+          !achievement.unlocked && "opacity-50",
+        )}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium leading-snug">
+          {achievement.displayName || achievement.apiName}
+        </p>
+        {achievement.description ? (
+          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+            {achievement.description}
+          </p>
+        ) : null}
+        <p className="mt-1 text-[11px] uppercase tracking-wide text-zinc-400">
+          {achievement.unlocked ? "Unlocked" : "Locked"}
+        </p>
+      </div>
+    </li>
   );
 }

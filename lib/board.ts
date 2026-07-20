@@ -3,7 +3,7 @@ import {
   boardProgressBar,
   DEFAULT_PLAYING_AUTO_TRACK,
   progressTrackingAfterBoardMove,
-  type BoardProgressBar,
+  type ProgressCounts,
 } from "./progress.ts";
 
 export const BOARD_COLUMNS = [
@@ -62,7 +62,7 @@ export type BoardCard = {
   headerImageUrl: string;
   iconImageUrl: string;
   playtimeForever: number;
-  progress: BoardProgressBar | null;
+  progress: ProgressCounts | null;
 };
 
 export type BoardSnapshot = {

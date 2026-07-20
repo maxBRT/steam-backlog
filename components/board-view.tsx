@@ -52,6 +52,27 @@ const PRIMARY_LINK_CLASS =
 
 const ITEM_TYPE = "item";
 
+function BoardGameNameLink({
+  card,
+  stopClick = false,
+}: {
+  card: BoardCard;
+  stopClick?: boolean;
+}) {
+  return (
+    <Link
+      href={`/game/${card.id}`}
+      onClick={
+        stopClick ? (event) => event.stopPropagation() : undefined
+      }
+      onPointerDown={(event) => event.stopPropagation()}
+      className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+    >
+      {card.name}
+    </Link>
+  );
+}
+
 async function persistMove(
   entryId: number,
   targetColumn: BoardColumn,
@@ -168,13 +189,7 @@ function BoardQueueCard({
         </div>
         <div className="space-y-1 p-3">
           <h3 className="line-clamp-3 text-sm font-semibold leading-snug">
-            <Link
-              href={`/game/${card.id}`}
-              onPointerDown={(event) => event.stopPropagation()}
-              className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
-            >
-              {card.name}
-            </Link>
+            <BoardGameNameLink card={card} />
           </h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             {playtimeLabel(card.playtimeForever)}
@@ -210,14 +225,7 @@ function BoardQueueCard({
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-1 text-sm font-semibold leading-snug">
-              <Link
-                href={`/game/${card.id}`}
-                onClick={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-                className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
-              >
-                {card.name}
-              </Link>
+              <BoardGameNameLink card={card} stopClick />
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {playtimeLabel(card.playtimeForever)}
@@ -281,13 +289,7 @@ function BoardGameCard({
       <div className="space-y-3 p-3">
         <div>
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
-            <Link
-              href={`/game/${card.id}`}
-              onPointerDown={(event) => event.stopPropagation()}
-              className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
-            >
-              {card.name}
-            </Link>
+            <BoardGameNameLink card={card} />
           </h3>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             {playtimeLabel(card.playtimeForever)}
