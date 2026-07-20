@@ -1,5 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  isProgressRefreshEligible,
+  persistProgressRefresh,
+  progressFieldsWhenRemoved,
+} from "../progress.ts";
 import { chunk } from "../utils.ts";
+import {
+  AchievementsUnavailableError,
+  fetchAchievementsForGame,
+} from "./achievements.ts";
 import {
   fetchOwnedGames,
   GameDetailsHiddenError,
@@ -15,6 +24,7 @@ export type SyncResult =
 
 export type SyncLibraryDeps = {
   fetchOwnedGames?: typeof fetchOwnedGames;
+  fetchAchievementsForGame?: typeof fetchAchievementsForGame;
 };
 
 const UPSERT_CHUNK = 100;
@@ -73,6 +83,8 @@ export async function syncLibrary(
   deps: SyncLibraryDeps = {},
 ): Promise<SyncResult> {
   const fetchGames = deps.fetchOwnedGames ?? fetchOwnedGames;
+  const fetchAchievements =
+    deps.fetchAchievementsForGame ?? fetchAchievementsForGame;
 
   const { data: profile, error: profileError } = await supabase
     .from("steam_profiles")
@@ -87,7 +99,28 @@ export async function syncLibrary(
   try {
     await setSyncStatus(supabase, steamProfileId, { sync_status: "syncing" });
 
-    const owned = await fetchGames(parseSteamId(profile.steam_id));
+    const steamId = parseSteamId(profile.steam_id);
+    const owned = await fetchGames(steamId);
+
+    const { data: priorEntries, error: priorError } = await supabase
+      .from("steam_profile_games")
+      .select(
+        "id, game_id, progress_tracking, progress_fetched_at, playtime_forever, last_played_at",
+      )
+      .eq("steam_profile_id", steamProfileId);
+
+    if (priorError) throw new Error(priorError.message);
+
+    const priorByGameId = new Map(
+      ((priorEntries ?? []) as Array<{
+        id: number;
+        game_id: number;
+        progress_tracking: boolean;
+        progress_fetched_at: string | null;
+        playtime_forever: number;
+        last_played_at: string | null;
+      }>).map((row) => [row.game_id, row]),
+    );
 
     const gameRows = owned.map((game) => ({
       app_id: game.appId,
@@ -143,9 +176,53 @@ export async function syncLibrary(
     if (idsToRemove.length > 0) {
       const { error } = await supabase
         .from("steam_profile_games")
-        .update({ removed_at: new Date().toISOString() })
+        .update({
+          removed_at: new Date().toISOString(),
+          ...progressFieldsWhenRemoved({
+            progressTracking: true,
+            progressUnlocked: null,
+            progressTotal: null,
+            progressFetchedAt: null,
+          }),
+        })
         .in("id", idsToRemove);
       if (error) throw new Error(error.message);
+    }
+
+    for (const game of owned) {
+      const gameId = appIdToGameId.get(game.appId);
+      if (gameId === undefined) continue;
+      const prior = priorByGameId.get(gameId);
+      if (!prior) continue;
+
+      const newLastPlayedAt = game.lastPlayedAt?.toISOString() ?? null;
+      if (
+        !isProgressRefreshEligible({
+          progressTracking: prior.progress_tracking,
+          progressFetchedAt: prior.progress_fetched_at,
+          storedPlaytimeForever: prior.playtime_forever,
+          storedLastPlayedAt: prior.last_played_at,
+          newPlaytimeForever: game.playtimeForever,
+          newLastPlayedAt,
+        })
+      ) {
+        continue;
+      }
+
+      try {
+        const achievements = await fetchAchievements(steamId, game.appId);
+        await persistProgressRefresh(supabase, {
+          libraryEntryId: prior.id,
+          gameId,
+          achievements,
+        });
+      } catch (err) {
+        if (err instanceof AchievementsUnavailableError) {
+          // Leave Progress untouched; Game detail can surface the error later.
+          continue;
+        }
+        throw err;
+      }
     }
 
     await setSyncStatus(supabase, steamProfileId, {

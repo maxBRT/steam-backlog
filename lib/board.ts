@@ -1,4 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  boardProgressBar,
+  DEFAULT_PLAYING_AUTO_TRACK,
+  progressTrackingAfterBoardMove,
+  type ProgressCounts,
+} from "./progress.ts";
 
 export const BOARD_COLUMNS = [
   "queue",
@@ -56,6 +62,7 @@ export type BoardCard = {
   headerImageUrl: string;
   iconImageUrl: string;
   playtimeForever: number;
+  progress: ProgressCounts | null;
 };
 
 export type BoardSnapshot = {
@@ -76,6 +83,9 @@ export type BoardRow = {
   board_column: BoardColumn;
   board_position: number;
   playtime_forever: number;
+  progress_tracking: boolean;
+  progress_unlocked: number | null;
+  progress_total: number | null;
   games: GameRow | GameRow[];
 };
 
@@ -142,6 +152,11 @@ export function buildBoardSnapshot(
       headerImageUrl: game.header_image_url,
       iconImageUrl: game.icon_image_url,
       playtimeForever: row.playtime_forever,
+      progress: boardProgressBar({
+        progressTracking: row.progress_tracking,
+        progressUnlocked: row.progress_unlocked,
+        progressTotal: row.progress_total,
+      }),
     };
   }
 
@@ -188,7 +203,7 @@ export async function loadBoardSnapshot(
     const { data, error } = await supabase
       .from("steam_profile_games")
       .select(
-        "id, board_column, board_position, playtime_forever, games!inner(app_id, name, header_image_url, icon_image_url)",
+        "id, board_column, board_position, playtime_forever, progress_tracking, progress_unlocked, progress_total, games!inner(app_id, name, header_image_url, icon_image_url)",
       )
       .eq("steam_profile_id", steamProfileId)
       .eq("triage_status", "kept")
@@ -326,6 +341,29 @@ export async function moveBoardEntry(
   targetColumn: BoardColumn,
   targetIndex: number,
 ): Promise<void> {
+  const { data: entry, error: entryError } = await supabase
+    .from("steam_profile_games")
+    .select("board_column, progress_tracking, steam_profile_id")
+    .eq("id", entryId)
+    .maybeSingle();
+
+  if (entryError) {
+    throw new Error(`Could not load library entry: ${entryError.message}`);
+  }
+  if (!entry?.board_column || !isBoardColumn(entry.board_column)) {
+    throw new Error("Library entry not found");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("steam_profiles")
+    .select("playing_auto_track")
+    .eq("id", entry.steam_profile_id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(`Could not load steam profile: ${profileError.message}`);
+  }
+
   // ponytail: one RPC transaction; refresh never sees staged positions.
   const { error } = await supabase.rpc("move_board_entry", {
     p_entry_id: entryId,
@@ -335,5 +373,24 @@ export async function moveBoardEntry(
 
   if (error) {
     throw new Error(`Could not save board move: ${error.message}`);
+  }
+
+  const nextTracking = progressTrackingAfterBoardMove({
+    previousColumn: entry.board_column,
+    nextColumn: targetColumn,
+    playingAutoTrack: profile?.playing_auto_track ?? DEFAULT_PLAYING_AUTO_TRACK,
+    progressTracking: Boolean(entry.progress_tracking),
+  });
+
+  if (nextTracking !== Boolean(entry.progress_tracking)) {
+    const { error: trackingError } = await supabase
+      .from("steam_profile_games")
+      .update({ progress_tracking: nextTracking })
+      .eq("id", entryId);
+    if (trackingError) {
+      throw new Error(
+        `Could not update Progress tracking: ${trackingError.message}`,
+      );
+    }
   }
 }

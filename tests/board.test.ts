@@ -71,6 +71,9 @@ describe("board snapshot", () => {
         board_column: "queue",
         board_position: 1,
         playtime_forever: 60,
+        progress_tracking: false,
+        progress_unlocked: null,
+        progress_total: null,
         games: { app_id: 10, name: "Second", header_image_url: "b.jpg", icon_image_url: "" },
       },
       {
@@ -78,6 +81,9 @@ describe("board snapshot", () => {
         board_column: "queue",
         board_position: 0,
         playtime_forever: 0,
+        progress_tracking: false,
+        progress_unlocked: null,
+        progress_total: null,
         games: { app_id: 20, name: "First", header_image_url: "a.jpg", icon_image_url: "" },
       },
       {
@@ -85,6 +91,9 @@ describe("board snapshot", () => {
         board_column: "playing",
         board_position: 0,
         playtime_forever: 120,
+        progress_tracking: false,
+        progress_unlocked: null,
+        progress_total: null,
         games: { app_id: 30, name: "Active", header_image_url: "c.jpg", icon_image_url: "" },
       },
     ];
@@ -99,6 +108,84 @@ describe("board snapshot", () => {
       "Active",
     ]);
     assert.deepEqual(snapshot.columns.done, []);
+  });
+
+  it("includes Progress bar fields only when tracking is on and Progress is known", () => {
+    const rows: BoardRow[] = [
+      {
+        id: 1,
+        board_column: "playing",
+        board_position: 0,
+        playtime_forever: 100,
+        progress_tracking: true,
+        progress_unlocked: 4,
+        progress_total: 20,
+        games: {
+          app_id: 100,
+          name: "Tracked Known",
+          header_image_url: "a.jpg",
+          icon_image_url: "",
+        },
+      },
+      {
+        id: 2,
+        board_column: "playing",
+        board_position: 1,
+        playtime_forever: 50,
+        progress_tracking: true,
+        progress_unlocked: 0,
+        progress_total: 8,
+        games: {
+          app_id: 101,
+          name: "Tracked Zero",
+          header_image_url: "b.jpg",
+          icon_image_url: "",
+        },
+      },
+      {
+        id: 3,
+        board_column: "up_next",
+        board_position: 0,
+        playtime_forever: 10,
+        progress_tracking: true,
+        progress_unlocked: null,
+        progress_total: null,
+        games: {
+          app_id: 102,
+          name: "Tracked Unknown",
+          header_image_url: "c.jpg",
+          icon_image_url: "",
+        },
+      },
+      {
+        id: 4,
+        board_column: "queue",
+        board_position: 0,
+        playtime_forever: 0,
+        progress_tracking: false,
+        progress_unlocked: 5,
+        progress_total: 10,
+        games: {
+          app_id: 103,
+          name: "Untracked Cached",
+          header_image_url: "d.jpg",
+          icon_image_url: "",
+        },
+      },
+    ];
+
+    const snapshot = buildBoardSnapshot(rows, 4);
+
+    assert.deepEqual(snapshot.columns.playing[0]?.progress, {
+      unlocked: 4,
+      total: 20,
+    });
+    assert.deepEqual(snapshot.columns.playing[1]?.progress, {
+      unlocked: 0,
+      total: 8,
+    });
+    assert.equal(snapshot.columns.up_next[0]?.progress, null);
+    assert.equal(snapshot.columns.queue[0]?.progress, null);
   });
 
   it("loads kept entries with board placement", async () => {
@@ -128,6 +215,9 @@ describe("board snapshot", () => {
               board_column: "done",
               board_position: 0,
               playtime_forever: 30,
+              progress_tracking: true,
+              progress_unlocked: 2,
+              progress_total: 5,
               games: {
                 app_id: 440,
                 name: "Team Fortress 2",
@@ -177,6 +267,7 @@ describe("board snapshot", () => {
         headerImageUrl: "tf2.jpg",
         iconImageUrl: "tf2-icon.jpg",
         playtimeForever: 30,
+        progress: { unlocked: 2, total: 5 },
       },
     ]);
     assert.ok(
@@ -219,6 +310,7 @@ describe("board moves", () => {
     headerImageUrl: "",
     iconImageUrl: "",
     playtimeForever: 0,
+    progress: null,
   });
 
   it("reorders within a column with contiguous positions", () => {
@@ -290,6 +382,56 @@ describe("board moves", () => {
   it("persists a move via move_board_entry RPC", async () => {
     let rpcArgs: unknown;
     const supabase = {
+      from(table: string) {
+        if (table === "steam_profile_games") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          board_column: "queue",
+                          progress_tracking: false,
+                          steam_profile_id: "profile-1",
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+            update() {
+              return {
+                async eq() {
+                  return { error: null };
+                },
+              };
+            },
+          };
+        }
+        if (table === "steam_profiles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: { playing_auto_track: true },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
       async rpc(fn: string, args: unknown) {
         assert.equal(fn, "move_board_entry");
         rpcArgs = args;
@@ -304,5 +446,133 @@ describe("board moves", () => {
       p_target_column: "playing",
       p_target_index: 0,
     });
+  });
+
+  it("turns Progress tracking on when moving into Playing with Playing auto-track on", async () => {
+    let progressUpdate: unknown;
+    const supabase = {
+      from(table: string) {
+        if (table === "steam_profile_games") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          board_column: "queue",
+                          progress_tracking: false,
+                          steam_profile_id: "profile-1",
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+            update(values: unknown) {
+              return {
+                async eq() {
+                  progressUpdate = values;
+                  return { error: null };
+                },
+              };
+            },
+          };
+        }
+        if (table === "steam_profiles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: { playing_auto_track: true },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+      async rpc() {
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient;
+
+    await moveBoardEntry(supabase, 9, "playing", 0);
+
+    assert.deepEqual(progressUpdate, { progress_tracking: true });
+  });
+
+  it("does not change Progress tracking when Playing auto-track is off", async () => {
+    let progressUpdate: unknown = "unset";
+    const supabase = {
+      from(table: string) {
+        if (table === "steam_profile_games") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          board_column: "queue",
+                          progress_tracking: false,
+                          steam_profile_id: "profile-1",
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+            update(values: unknown) {
+              return {
+                async eq() {
+                  progressUpdate = values;
+                  return { error: null };
+                },
+              };
+            },
+          };
+        }
+        if (table === "steam_profiles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: { playing_auto_track: false },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+      async rpc() {
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient;
+
+    await moveBoardEntry(supabase, 9, "playing", 0);
+
+    assert.equal(progressUpdate, "unset");
   });
 });
