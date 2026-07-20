@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { progressFieldsWhenRemoved } from "../progress.ts";
 import { chunk } from "../utils.ts";
 import {
   fetchOwnedGames,
@@ -143,7 +144,15 @@ export async function syncLibrary(
     if (idsToRemove.length > 0) {
       const { error } = await supabase
         .from("steam_profile_games")
-        .update({ removed_at: new Date().toISOString() })
+        .update({
+          removed_at: new Date().toISOString(),
+          ...progressFieldsWhenRemoved({
+            progressTracking: true,
+            progressUnlocked: null,
+            progressTotal: null,
+            progressFetchedAt: null,
+          }),
+        })
         .in("id", idsToRemove);
       if (error) throw new Error(error.message);
     }

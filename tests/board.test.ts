@@ -290,6 +290,56 @@ describe("board moves", () => {
   it("persists a move via move_board_entry RPC", async () => {
     let rpcArgs: unknown;
     const supabase = {
+      from(table: string) {
+        if (table === "steam_profile_games") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          board_column: "queue",
+                          progress_tracking: false,
+                          steam_profile_id: "profile-1",
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+            update() {
+              return {
+                async eq() {
+                  return { error: null };
+                },
+              };
+            },
+          };
+        }
+        if (table === "steam_profiles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: { playing_auto_track: true },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
       async rpc(fn: string, args: unknown) {
         assert.equal(fn, "move_board_entry");
         rpcArgs = args;
@@ -304,5 +354,133 @@ describe("board moves", () => {
       p_target_column: "playing",
       p_target_index: 0,
     });
+  });
+
+  it("turns Progress tracking on when moving into Playing with Playing auto-track on", async () => {
+    let progressUpdate: unknown;
+    const supabase = {
+      from(table: string) {
+        if (table === "steam_profile_games") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          board_column: "queue",
+                          progress_tracking: false,
+                          steam_profile_id: "profile-1",
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+            update(values: unknown) {
+              return {
+                async eq() {
+                  progressUpdate = values;
+                  return { error: null };
+                },
+              };
+            },
+          };
+        }
+        if (table === "steam_profiles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: { playing_auto_track: true },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+      async rpc() {
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient;
+
+    await moveBoardEntry(supabase, 9, "playing", 0);
+
+    assert.deepEqual(progressUpdate, { progress_tracking: true });
+  });
+
+  it("does not change Progress tracking when Playing auto-track is off", async () => {
+    let progressUpdate: unknown = "unset";
+    const supabase = {
+      from(table: string) {
+        if (table === "steam_profile_games") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          board_column: "queue",
+                          progress_tracking: false,
+                          steam_profile_id: "profile-1",
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+            update(values: unknown) {
+              return {
+                async eq() {
+                  progressUpdate = values;
+                  return { error: null };
+                },
+              };
+            },
+          };
+        }
+        if (table === "steam_profiles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: { playing_auto_track: false },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+      async rpc() {
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient;
+
+    await moveBoardEntry(supabase, 9, "playing", 0);
+
+    assert.equal(progressUpdate, "unset");
   });
 });

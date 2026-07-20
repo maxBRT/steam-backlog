@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_PLAYING_AUTO_TRACK,
+  progressTrackingAfterBoardMove,
+} from "./progress.ts";
 
 export const BOARD_COLUMNS = [
   "queue",
@@ -326,6 +330,29 @@ export async function moveBoardEntry(
   targetColumn: BoardColumn,
   targetIndex: number,
 ): Promise<void> {
+  const { data: entry, error: entryError } = await supabase
+    .from("steam_profile_games")
+    .select("board_column, progress_tracking, steam_profile_id")
+    .eq("id", entryId)
+    .maybeSingle();
+
+  if (entryError) {
+    throw new Error(`Could not load library entry: ${entryError.message}`);
+  }
+  if (!entry?.board_column || !isBoardColumn(entry.board_column)) {
+    throw new Error("Library entry not found");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("steam_profiles")
+    .select("playing_auto_track")
+    .eq("id", entry.steam_profile_id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(`Could not load steam profile: ${profileError.message}`);
+  }
+
   // ponytail: one RPC transaction; refresh never sees staged positions.
   const { error } = await supabase.rpc("move_board_entry", {
     p_entry_id: entryId,
@@ -335,5 +362,24 @@ export async function moveBoardEntry(
 
   if (error) {
     throw new Error(`Could not save board move: ${error.message}`);
+  }
+
+  const nextTracking = progressTrackingAfterBoardMove({
+    previousColumn: entry.board_column,
+    nextColumn: targetColumn,
+    playingAutoTrack: profile?.playing_auto_track ?? DEFAULT_PLAYING_AUTO_TRACK,
+    progressTracking: Boolean(entry.progress_tracking),
+  });
+
+  if (nextTracking !== Boolean(entry.progress_tracking)) {
+    const { error: trackingError } = await supabase
+      .from("steam_profile_games")
+      .update({ progress_tracking: nextTracking })
+      .eq("id", entryId);
+    if (trackingError) {
+      throw new Error(
+        `Could not update Progress tracking: ${trackingError.message}`,
+      );
+    }
   }
 }

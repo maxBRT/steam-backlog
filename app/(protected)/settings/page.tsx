@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LibrarySyncControls } from "@/components/library-sync-controls";
+import { PlayingAutoTrackControls } from "@/components/playing-auto-track-controls";
+import { DEFAULT_PLAYING_AUTO_TRACK } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 import { isSteamLinkError, SteamLinkError } from "@/lib/steam/link-errors";
 
@@ -34,7 +36,7 @@ export default async function SettingsPage({
     ? await supabase
         .from("steam_profiles")
         .select(
-          "steam_id, display_name, avatar_url, sync_status, last_synced_at",
+          "steam_id, display_name, avatar_url, sync_status, last_synced_at, playing_auto_track",
         )
         .eq("id", userId)
         .maybeSingle()
@@ -51,6 +53,9 @@ export default async function SettingsPage({
     profile?.sync_status === "syncing" || profile?.sync_status === "failed"
       ? profile.sync_status
       : "idle";
+
+  const playingAutoTrack =
+    profile?.playing_auto_track ?? DEFAULT_PLAYING_AUTO_TRACK;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-10">
@@ -101,6 +106,19 @@ export default async function SettingsPage({
               Connect Steam
             </a>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Progress</CardTitle>
+          <CardDescription>
+            Control when Progress tracking starts for games you move into
+            Playing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PlayingAutoTrackControls playingAutoTrack={playingAutoTrack} />
         </CardContent>
       </Card>
     </main>

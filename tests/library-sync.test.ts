@@ -35,6 +35,7 @@ describe("library sync helpers", () => {
     assert.equal("triage_status" in row, false);
     assert.equal("board_column" in row, false);
     assert.equal("board_position" in row, false);
+    assert.equal("progress_tracking" in row, false);
   });
 
   it("marks missing owned games for removed_at", () => {
@@ -87,6 +88,10 @@ type LibraryEntry = {
   playtime_2weeks: number;
   last_played_at: string | null;
   removed_at: string | null;
+  progress_tracking: boolean;
+  progress_unlocked: number | null;
+  progress_total: number | null;
+  progress_fetched_at: string | null;
 };
 
 function createMemorySupabase(seed: {
@@ -189,6 +194,10 @@ function createMemorySupabase(seed: {
                   playtime_2weeks: row.playtime_2weeks ?? 0,
                   last_played_at: row.last_played_at ?? null,
                   removed_at: row.removed_at ?? null,
+                  progress_tracking: row.progress_tracking ?? false,
+                  progress_unlocked: row.progress_unlocked ?? null,
+                  progress_total: row.progress_total ?? null,
+                  progress_fetched_at: row.progress_fetched_at ?? null,
                 });
               }
             }
@@ -260,6 +269,10 @@ describe("syncLibrary", () => {
           playtime_2weeks: 0,
           last_played_at: null,
           removed_at: null,
+          progress_tracking: false,
+          progress_unlocked: null,
+          progress_total: null,
+          progress_fetched_at: null,
         },
       ],
     });
@@ -311,6 +324,10 @@ describe("syncLibrary", () => {
           playtime_2weeks: 0,
           last_played_at: null,
           removed_at: null,
+          progress_tracking: false,
+          progress_unlocked: null,
+          progress_total: null,
+          progress_fetched_at: null,
         },
         {
           id: 2,
@@ -323,6 +340,10 @@ describe("syncLibrary", () => {
           playtime_2weeks: 0,
           last_played_at: null,
           removed_at: null,
+          progress_tracking: false,
+          progress_unlocked: null,
+          progress_total: null,
+          progress_fetched_at: null,
         },
       ],
     });
@@ -343,6 +364,77 @@ describe("syncLibrary", () => {
     assert.equal(db.entries[0].removed_at, null);
     assert.ok(db.entries[1].removed_at);
     assert.equal(db.entries[1].triage_status, "unreviewed");
+  });
+
+  it("turns Progress tracking off on Removed without wiping cached Progress", async () => {
+    const db = createMemorySupabase({
+      profile: {
+        id: "p1",
+        steam_id: "76561198000000000",
+        sync_status: "idle",
+        last_synced_at: null,
+      },
+      games: [
+        { id: 1, app_id: 570, name: "Dota 2", header_image_url: "", icon_image_url: "" },
+        { id: 2, app_id: 440, name: "TF2", header_image_url: "", icon_image_url: "" },
+      ],
+      entries: [
+        {
+          id: 1,
+          steam_profile_id: "p1",
+          game_id: 1,
+          triage_status: "kept",
+          board_column: "playing",
+          board_position: 0,
+          playtime_forever: 1,
+          playtime_2weeks: 0,
+          last_played_at: null,
+          removed_at: null,
+          progress_tracking: false,
+          progress_unlocked: null,
+          progress_total: null,
+          progress_fetched_at: null,
+        },
+        {
+          id: 2,
+          steam_profile_id: "p1",
+          game_id: 2,
+          triage_status: "kept",
+          board_column: "playing",
+          board_position: 1,
+          playtime_forever: 2,
+          playtime_2weeks: 0,
+          last_played_at: null,
+          removed_at: null,
+          progress_tracking: true,
+          progress_unlocked: 4,
+          progress_total: 12,
+          progress_fetched_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const result = await syncLibrary(db.client, "p1", {
+      fetchOwnedGames: async () => [
+        {
+          appId: 570,
+          name: "Dota 2",
+          playtimeForever: 1,
+          playtime2Weeks: 0,
+          lastPlayedAt: null,
+        },
+      ],
+    });
+
+    assert.equal(result.ok, true);
+    const removed = db.entries[1];
+    assert.ok(removed.removed_at);
+    assert.equal(removed.progress_tracking, false);
+    assert.equal(removed.progress_unlocked, 4);
+    assert.equal(removed.progress_total, 12);
+    assert.equal(removed.progress_fetched_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(removed.board_column, "playing");
+    assert.equal(removed.triage_status, "kept");
   });
 
   it("sets sync_status failed on private library", async () => {
