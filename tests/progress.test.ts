@@ -3,8 +3,10 @@ import { describe, it } from "node:test";
 import {
   canSetProgressTracking,
   DEFAULT_PLAYING_AUTO_TRACK,
+  isProgressRefreshEligible,
   parsePlayingAutoTrackMutation,
   progressFieldsWhenRemoved,
+  progressSummaryFromUnlocks,
   progressTrackingAfterBoardMove,
 } from "../lib/progress.ts";
 
@@ -120,5 +122,98 @@ describe("Playing auto-track preference", () => {
     });
     assert.equal(parsePlayingAutoTrackMutation({ playingAutoTrack: "yes" }), null);
     assert.equal(parsePlayingAutoTrackMutation({}), null);
+  });
+});
+
+describe("Progress refresh eligibility", () => {
+  it("refreshes when Progress tracking is on and Progress was never successfully fetched", () => {
+    assert.equal(
+      isProgressRefreshEligible({
+        progressTracking: true,
+        progressFetchedAt: null,
+        storedPlaytimeForever: 100,
+        storedLastPlayedAt: "2026-07-01T00:00:00.000Z",
+        newPlaytimeForever: 100,
+        newLastPlayedAt: "2026-07-01T00:00:00.000Z",
+      }),
+      true,
+    );
+  });
+
+  it("skips when Progress tracking is on, already fetched, and playtime forever / last played are unchanged", () => {
+    assert.equal(
+      isProgressRefreshEligible({
+        progressTracking: true,
+        progressFetchedAt: "2026-07-10T00:00:00.000Z",
+        storedPlaytimeForever: 100,
+        storedLastPlayedAt: "2026-07-01T00:00:00.000Z",
+        newPlaytimeForever: 100,
+        newLastPlayedAt: "2026-07-01T00:00:00.000Z",
+      }),
+      false,
+    );
+  });
+
+  it("refreshes when Progress tracking is on and playtime forever changed", () => {
+    assert.equal(
+      isProgressRefreshEligible({
+        progressTracking: true,
+        progressFetchedAt: "2026-07-10T00:00:00.000Z",
+        storedPlaytimeForever: 100,
+        storedLastPlayedAt: "2026-07-01T00:00:00.000Z",
+        newPlaytimeForever: 150,
+        newLastPlayedAt: "2026-07-01T00:00:00.000Z",
+      }),
+      true,
+    );
+  });
+
+  it("refreshes when Progress tracking is on and last played changed", () => {
+    assert.equal(
+      isProgressRefreshEligible({
+        progressTracking: true,
+        progressFetchedAt: "2026-07-10T00:00:00.000Z",
+        storedPlaytimeForever: 100,
+        storedLastPlayedAt: "2026-07-01T00:00:00.000Z",
+        newPlaytimeForever: 100,
+        newLastPlayedAt: "2026-07-15T00:00:00.000Z",
+      }),
+      true,
+    );
+  });
+
+  it("skips when Progress tracking is off even if playtime forever changed", () => {
+    assert.equal(
+      isProgressRefreshEligible({
+        progressTracking: false,
+        progressFetchedAt: null,
+        storedPlaytimeForever: 100,
+        storedLastPlayedAt: null,
+        newPlaytimeForever: 200,
+        newLastPlayedAt: "2026-07-15T00:00:00.000Z",
+      }),
+      false,
+    );
+  });
+});
+
+describe("Progress summary from unlocks", () => {
+  it("derives unlocked over total from achievement unlocks", () => {
+    assert.deepEqual(
+      progressSummaryFromUnlocks([
+        { unlocked: true },
+        { unlocked: false },
+        { unlocked: true },
+        { unlocked: false },
+      ]),
+      { unlocked: 2, total: 4 },
+    );
+  });
+
+  it("does not invent fake Progress when there are no achievements", () => {
+    assert.deepEqual(progressSummaryFromUnlocks([]), {
+      unlocked: null,
+      total: null,
+    });
   });
 });
