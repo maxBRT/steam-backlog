@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  boardProgressBar,
   DEFAULT_PLAYING_AUTO_TRACK,
   progressTrackingAfterBoardMove,
+  type BoardProgressBar,
 } from "./progress.ts";
 
 export const BOARD_COLUMNS = [
@@ -60,6 +62,7 @@ export type BoardCard = {
   headerImageUrl: string;
   iconImageUrl: string;
   playtimeForever: number;
+  progress: BoardProgressBar | null;
 };
 
 export type BoardSnapshot = {
@@ -80,6 +83,9 @@ export type BoardRow = {
   board_column: BoardColumn;
   board_position: number;
   playtime_forever: number;
+  progress_tracking: boolean;
+  progress_unlocked: number | null;
+  progress_total: number | null;
   games: GameRow | GameRow[];
 };
 
@@ -146,6 +152,11 @@ export function buildBoardSnapshot(
       headerImageUrl: game.header_image_url,
       iconImageUrl: game.icon_image_url,
       playtimeForever: row.playtime_forever,
+      progress: boardProgressBar({
+        progressTracking: row.progress_tracking,
+        progressUnlocked: row.progress_unlocked,
+        progressTotal: row.progress_total,
+      }),
     };
   }
 
@@ -192,7 +203,7 @@ export async function loadBoardSnapshot(
     const { data, error } = await supabase
       .from("steam_profile_games")
       .select(
-        "id, board_column, board_position, playtime_forever, games!inner(app_id, name, header_image_url, icon_image_url)",
+        "id, board_column, board_position, playtime_forever, progress_tracking, progress_unlocked, progress_total, games!inner(app_id, name, header_image_url, icon_image_url)",
       )
       .eq("steam_profile_id", steamProfileId)
       .eq("triage_status", "kept")

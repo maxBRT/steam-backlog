@@ -16,6 +16,7 @@ import {
   Play,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { ProgressBar } from "@/components/progress-bar";
 import {
   applyBoardMove,
   BOARD_COLUMN_LABELS,
@@ -167,11 +168,18 @@ function BoardQueueCard({
         </div>
         <div className="space-y-1 p-3">
           <h3 className="line-clamp-3 text-sm font-semibold leading-snug">
-            {card.name}
+            <Link
+              href={`/game/${card.id}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+            >
+              {card.name}
+            </Link>
           </h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             {playtimeLabel(card.playtimeForever)}
           </p>
+          {card.progress ? <ProgressBar progress={card.progress} /> : null}
         </div>
       </article>
     );
@@ -202,11 +210,21 @@ function BoardQueueCard({
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-1 text-sm font-semibold leading-snug">
-              {card.name}
+              <Link
+                href={`/game/${card.id}`}
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+              >
+                {card.name}
+              </Link>
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {playtimeLabel(card.playtimeForever)}
             </p>
+            {card.progress ? (
+              <ProgressBar progress={card.progress} className="mt-1" />
+            ) : null}
           </div>
           <ChevronDown
             className="size-4 shrink-0 text-zinc-400"
@@ -263,11 +281,20 @@ function BoardGameCard({
       <div className="space-y-3 p-3">
         <div>
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
-            {card.name}
+            <Link
+              href={`/game/${card.id}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+            >
+              {card.name}
+            </Link>
           </h3>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             {playtimeLabel(card.playtimeForever)}
           </p>
+          {card.progress ? (
+            <ProgressBar progress={card.progress} className="mt-2" />
+          ) : null}
         </div>
         {showLaunch ? (
           <a
