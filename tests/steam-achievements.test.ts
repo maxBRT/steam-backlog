@@ -20,7 +20,7 @@ describe("fetchAchievementsForGame", () => {
     }
   });
 
-  it("returns Achievement definitions and unlocks from schema + player achievements", async () => {
+  it("returns Achievement definitions and unlocks from schema + GetPlayerAchievements", async () => {
     const mockFetch = mock.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("GetSchemaForGame")) {
@@ -112,7 +112,7 @@ describe("fetchAchievementsForGame", () => {
     });
   });
 
-  it("throws AchievementsUnavailableError when player stats are private", async () => {
+  it("throws AchievementsUnavailableError when Steam stats are private", async () => {
     const mockFetch = mock.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("GetSchemaForGame")) {

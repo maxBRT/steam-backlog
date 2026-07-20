@@ -53,7 +53,7 @@ type PlayerAchievementsResponse = {
 };
 
 /**
- * Fetches Achievement catalog definitions (schema-for-game) and per-player unlocks.
+ * Fetches Achievement catalog definitions (schema-for-game) and Achievement unlocks.
  * Injectable fetch matches owned-games dependency style for Library sync.
  */
 export async function fetchAchievementsForGame(
